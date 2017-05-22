@@ -41,9 +41,6 @@ __standalone.xml__
 </providers>
 ...
 <theme>
-    <default>
-                wsfed
-    </default>
     <modules>
             <module>
                     com.quest.keycloak-wsfed
