@@ -1,0 +1,1 @@
+# WS-Federation for keycloak
