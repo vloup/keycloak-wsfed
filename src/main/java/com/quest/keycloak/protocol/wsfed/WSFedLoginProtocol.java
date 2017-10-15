@@ -18,14 +18,19 @@ package com.quest.keycloak.protocol.wsfed;
 
 import java.io.InputStream;
 import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import javax.xml.datatype.DatatypeConfigurationException;
 
 import com.quest.keycloak.common.wsfed.WSFedConstants;
 import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedSAML2AssertionTypeBuilder;
+import com.quest.keycloak.protocol.wsfed.builders.WsFedSAML11AssertionTypeBuilder;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -33,6 +38,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.jboss.logging.Logger;
 import org.keycloak.connections.httpclient.HttpClientProvider;
+import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.ClientModel;
@@ -43,6 +49,8 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
+import org.keycloak.saml.common.exceptions.ConfigurationException;
+import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
@@ -52,6 +60,8 @@ import com.quest.keycloak.protocol.wsfed.builders.WSFedOIDCAccessTokenBuilder;
 
 /**
  * Created on 5/19/15.
+ * @author dbarentine
+ * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
  */
 public class WSFedLoginProtocol implements LoginProtocol {
     protected static final Logger logger = Logger.getLogger(WSFedLoginProtocol.class);
@@ -59,6 +69,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
 
     public static final String WSFED_JWT = "wsfed.jwt";
     public static final String WSFED_X5T = "wsfed.x5t";
+    public static final String WSFED_SAML_ASSERTION_TOKEN_FORMAT = "wsfed.saml_assertion_token_format";
     public static final String WSFED_LOGOUT_BINDING_URI = "WSFED_LOGOUT_BINDING_URI";
     public static final String WSFED_CONTEXT = "WSFED_CONTEXT";
 
@@ -161,16 +172,17 @@ public class WSFedLoginProtocol implements LoginProtocol {
                 builder.setJwt(token);
             } else {
                 //if client wants SAML
-                WSFedSAML2AssertionTypeBuilder samlBuilder = new WSFedSAML2AssertionTypeBuilder();
-                samlBuilder.setRealm(realm)
-                            .setUriInfo(uriInfo)
-                            .setAccessCode(accessCode)
-                            .setClientSession(clientSession)
-                            .setUserSession(userSession)
-                            .setSession(session);
-
-                AssertionType token = samlBuilder.build();
-                builder.setSamlToken(token);
+                WsFedSAMLAssertionTokenFormat tokenFormat = getSamlAssertionTokenFormat(client);
+                switch(tokenFormat) {
+                    case SAML20_ASSERTION_TOKEN_FORMAT:
+                        AssertionType saml20Token = buildSAML20AssertionToken(userSession, accessCode, clientSession);
+                        builder.setSamlToken(saml20Token);
+                        break;
+                    case SAML11_ASSERTION_TOKEN_FORMAT:
+                        SAML11AssertionType saml11Token = buildSAML11AssertionToken(userSession, accessCode, clientSession);
+                        builder.setSaml11Token(saml11Token);
+                        break;
+                }
             }
 
             return builder.buildResponse();
@@ -178,6 +190,43 @@ public class WSFedLoginProtocol implements LoginProtocol {
             logger.error("failed", e);
             return ErrorPage.error(session, Messages.FAILED_TO_PROCESS_RESPONSE);
         }
+    }
+
+    private SAML11AssertionType buildSAML11AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, ClientSessionModel clientSession)
+            throws DatatypeConfigurationException, ConfigurationException, ProcessingException {
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(realm)
+                .setUriInfo(uriInfo)
+                .setAccessCode(accessCode)
+                .setClientSession(clientSession)
+                .setUserSession(userSession)
+                .setSession(session);
+        return samlBuilder.build();
+    }
+
+    private AssertionType buildSAML20AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, ClientSessionModel clientSession)
+            throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+        WSFedSAML2AssertionTypeBuilder samlBuilder = new WSFedSAML2AssertionTypeBuilder();
+        samlBuilder.setRealm(realm)
+                .setUriInfo(uriInfo)
+                .setAccessCode(accessCode)
+                .setClientSession(clientSession)
+                .setUserSession(userSession)
+                .setSession(session);
+        return samlBuilder.build();
+    }
+
+    public WsFedSAMLAssertionTokenFormat getSamlAssertionTokenFormat(ClientModel client) {
+        String value = client.getAttribute(WSFED_SAML_ASSERTION_TOKEN_FORMAT);
+        try {
+            if (value != null)
+                return WsFedSAMLAssertionTokenFormat.parse(value);
+            return WsFedSAMLAssertionTokenFormat.SAML20_ASSERTION_TOKEN_FORMAT;
+        }
+        catch(RuntimeException ex) {
+            logger.error(ex.toString());
+        }
+        return WsFedSAMLAssertionTokenFormat.SAML20_ASSERTION_TOKEN_FORMAT;
     }
 
     protected boolean useJwt(ClientModel client) {
