@@ -21,7 +21,7 @@ import com.quest.keycloak.common.wsfed.writers.WSTrustResponseWriter;
 import com.quest.keycloak.protocol.wsfed.sig.SAML11Signature;
 import com.quest.keycloak.protocol.wsfed.sig.SAML2SignatureProxy;
 import com.quest.keycloak.protocol.wsfed.sig.SAMLAbstractSignature;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.saml.SignatureAlgorithm;
@@ -183,7 +183,7 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
     public RequestSecurityTokenResponse build() throws ConfigurationException, ProcessingException {
         RequestSecurityTokenResponse response = new RequestSecurityTokenResponse();
 
-        response.setContext(StringEscapeUtils.escapeXml11(context));
+        response.setContext(StringEscapeUtils.escapeXml(context));
 
         XMLGregorianCalendar issueInstance = XMLTimeUtil.getIssueInstant();
         response.setLifetime(new Lifetime(issueInstance.toGregorianCalendar(), XMLTimeUtil.add(issueInstance, tokenExpiration * 1000).toGregorianCalendar()));

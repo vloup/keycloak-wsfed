@@ -1,19 +1,14 @@
 package com.quest.keycloak.saml.processing.core.saml.v2.util;
 
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
-import org.keycloak.dom.saml.v1.assertion.SAML11AttributeStatementType;
-import org.keycloak.dom.saml.v1.assertion.SAML11AttributeType;
-import org.keycloak.dom.saml.v1.assertion.SAML11ConditionsType;
-import org.keycloak.dom.saml.v1.assertion.SAML11StatementAbstractType;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.common.PicketLinkLogger;
 import org.keycloak.saml.common.PicketLinkLoggerFactory;
+import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.common.util.DocumentUtil;
 import org.keycloak.saml.common.util.StaxUtil;
 import org.keycloak.saml.processing.core.saml.v1.writers.SAML11AssertionWriter;
 import org.w3c.dom.Document;
 
-import javax.xml.datatype.XMLGregorianCalendar;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 

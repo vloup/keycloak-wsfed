@@ -17,11 +17,13 @@
 package com.quest.keycloak.broker.wsfed;
 
 import org.keycloak.broker.provider.DefaultDataMarshaller;
+import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.saml.common.exceptions.ParsingException;
 import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.common.util.StaxUtil;
 import org.keycloak.saml.processing.core.parsers.saml.SAMLParser;
+import org.keycloak.saml.processing.core.saml.v1.writers.SAML11AssertionWriter;
 import org.keycloak.saml.processing.core.saml.v2.writers.SAMLAssertionWriter;
 
 import java.io.ByteArrayInputStream;
@@ -42,7 +44,18 @@ public class WSFedDataMarshaller extends DefaultDataMarshaller {
             } catch (ProcessingException pe) {
                 throw new RuntimeException(pe);
             }
+        }
+        else if (obj instanceof SAML11AssertionType) {
+            try {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                SAML11AssertionType assertion = (SAML11AssertionType) obj;
+                SAML11AssertionWriter samlWriter = new SAML11AssertionWriter(StaxUtil.getXMLStreamWriter(bos));
+                samlWriter.write(assertion);
 
+                return new String(bos.toByteArray());
+            } catch (ProcessingException pe) {
+                throw new RuntimeException(pe);
+            }
         }
         //else if (obj instanceof JWSInput
         else {
@@ -53,6 +66,17 @@ public class WSFedDataMarshaller extends DefaultDataMarshaller {
     @Override
     public <T> T deserialize(String serialized, Class<T> clazz) {
         if (clazz.equals(AssertionType.class)) {
+            try {
+                byte[] bytes = serialized.getBytes();
+                InputStream is = new ByteArrayInputStream(bytes);
+                Object respType = new SAMLParser().parse(is);
+
+                return clazz.cast(respType);
+            } catch (ParsingException pe) {
+                throw new RuntimeException(pe);
+            }
+        }
+        else if (clazz.equals(SAML11AssertionType.class)) {
             try {
                 byte[] bytes = serialized.getBytes();
                 InputStream is = new ByteArrayInputStream(bytes);

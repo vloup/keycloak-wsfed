@@ -16,19 +16,10 @@
 
 package com.quest.keycloak.protocol.wsfed;
 
-import java.io.InputStream;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
-import javax.ws.rs.HttpMethod;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
-import javax.xml.datatype.DatatypeConfigurationException;
-
 import com.quest.keycloak.common.wsfed.WSFedConstants;
 import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
+import com.quest.keycloak.protocol.wsfed.builders.RequestSecurityTokenResponseBuilder;
+import com.quest.keycloak.protocol.wsfed.builders.WSFedOIDCAccessTokenBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedSAML2AssertionTypeBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WsFedSAML11AssertionTypeBuilder;
 import org.apache.http.HttpEntity;
@@ -55,8 +46,13 @@ import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
 
-import com.quest.keycloak.protocol.wsfed.builders.RequestSecurityTokenResponseBuilder;
-import com.quest.keycloak.protocol.wsfed.builders.WSFedOIDCAccessTokenBuilder;
+import javax.ws.rs.HttpMethod;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
+import javax.xml.datatype.DatatypeConfigurationException;
+import java.io.InputStream;
+import java.security.KeyPair;
 
 /**
  * Created on 5/19/15.
