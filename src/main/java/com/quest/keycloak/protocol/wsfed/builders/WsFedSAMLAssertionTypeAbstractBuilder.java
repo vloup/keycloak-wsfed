@@ -34,7 +34,8 @@ import javax.ws.rs.core.UriInfo;
  * @date 10/4/2016
  */
 
-public abstract class WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBuilder> {
+public abstract class
+WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBuilder> {
     public static final String WSFED_NAME_ID = "WSFED_NAME_ID";
     public static final String WSFED_NAME_ID_FORMAT = "WSFED_NAME_ID_FORMAT";
     public static final String SAML_NAME_ID_FORMAT_ATTRIBUTE = "saml_name_id_format";

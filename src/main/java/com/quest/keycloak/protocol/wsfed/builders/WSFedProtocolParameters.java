@@ -20,9 +20,22 @@ import com.quest.keycloak.common.wsfed.WSFedConstants;
 
 import javax.ws.rs.core.MultivaluedMap;
 
+/**
+ * WS-Fed parameter class.
+ * From http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html
+ *
+ * This class holds the state of all WS-Fed parameters from chapter 13.2 HTTP Protocol syntax, but currently only
+ * 13.2.1 Parameters
+ * 13.2.2 Requesting Security Tokens
+ * 13.2.3 Returning Security Tokens
+ * 13.2.4 Sign-Out Request Syntax
+ *
+ * are implemented
+ */
 public class WSFedProtocolParameters {
     protected String wsfed_action;
     protected String wsfed_reply;
+    protected String wsfed_resource;
     protected String wsfed_context;
     protected String wsfed_policy;
     protected String wsfed_current_time;
@@ -37,9 +50,15 @@ public class WSFedProtocolParameters {
     protected String wsfed_result;
     protected String wsfed_result_url;
 
-    public WSFedProtocolParameters() {
-    }
 
+    /**
+     * Sets the WS-Fed parameters from a Multivalued map. Such a map is typically returned by an http request form
+     * parameters (POST) or an uri's parameters (GET). This method takes the first instance of a parameter, which is
+     * fair, as the WS-Fed protocol doesn't specify what to do if a same parameter is set multiple times.
+     *
+     * @param requestParams a multivalued map. Expected to contain a browser's input ws-fed parameters.
+     * @return a new WSFedProtocolParameters with all existing parameters filled in.
+     */
     public static WSFedProtocolParameters fromParameters(MultivaluedMap<String, String> requestParams) {
         WSFedProtocolParameters params = new WSFedProtocolParameters();
 
@@ -49,6 +68,10 @@ public class WSFedProtocolParameters {
 
         if(requestParams.containsKey(WSFedConstants.WSFED_REPLY)) {
             params.setWsfed_reply(requestParams.getFirst(WSFedConstants.WSFED_REPLY));
+        }
+
+        if(requestParams.containsKey(WSFedConstants.WSFED_RESOURCE)) {
+            params.setWsfed_resource(requestParams.getFirst(WSFedConstants.WSFED_RESOURCE));
         }
 
         if(requestParams.containsKey(WSFedConstants.WSFED_CONTEXT)) {
@@ -120,6 +143,14 @@ public class WSFedProtocolParameters {
 
     public void setWsfed_reply(String wsfed_reply) {
         this.wsfed_reply = wsfed_reply;
+    }
+
+    public String getWsfed_resource() {
+        return  wsfed_resource;
+    }
+
+    public void setWsfed_resource(String wsfed_resource) {
+        this.wsfed_resource = wsfed_resource;
     }
 
     public String getWsfed_context() {
