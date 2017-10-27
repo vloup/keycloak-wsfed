@@ -55,6 +55,7 @@ import java.io.InputStream;
 import java.security.KeyPair;
 
 /**
+ * Implementation of keycloak's LoginProtocol. This is necessary
  * Created on 5/19/15.
  * @author dbarentine
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>

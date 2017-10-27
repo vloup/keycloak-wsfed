@@ -21,6 +21,16 @@ package com.quest.keycloak.common.wsfed;
  *
  * WS-Fed parameters and other constants
  * From http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html
+ *
+ * From chapter 13.2 HTTP Protocol syntax -> Syntax of the protocols used by Web requestors.
+ * Also from chapter 15 Error Handling.
+ *
+ * Implemented 12.3 Sub-chapters are:
+ * 13.2.1 Parameters
+ * 13.2.2 Requesting Security Tokens
+ * 13.2.3 Returning Security Tokens
+ * 13.2.4 Sign-Out Request Syntax
+ *
  */
 public interface WSFedConstants {
     /**
@@ -34,6 +44,9 @@ public interface WSFedConstants {
     xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
     xmlns:d3p1="http://docs.oasis-open.org/wss/oasis-wss-wssecurity-secext-1.1.xsd
     */
+
+    /*-------- 13.2.1 Parameters --------*/
+
     /**
      * wa
      *
@@ -45,11 +58,30 @@ public interface WSFedConstants {
      */
     String WSFED_ACTION = "wa";
 
+    /**
+     * "wa" value : For sign-in, this string MUST be "wsignin1.0"
+     */
     String WSFED_SIGNIN_ACTION = "wsignin1.0";
+
+    /**
+     * "wa" value: For attribute requests, this string MUST be "wattr1.0"
+     */
     String WSFED_ATTRIBUTE_ACTION = "wattr1.0";
 
+    /**
+     * "wa" value: For sign-out, this string MUST be "wsignout1.0"
+     */
     String WSFED_SIGNOUT_ACTION = "wsignout1.0";
+
+    /**
+     * "wa" value: For cleanup, this string MUST be "wsignoutcleanup1.0"
+     */
     String WSFED_SIGNOUT_CLEANUP_ACTION = "wsignoutcleanup1.0";
+
+    /**
+     * "wa" value: For Pseudonym  requests, this string MUST be "wpseudo1.0"
+     */
+    String WSFED_PSEUDONYM_ACTION = "wpseudo1.0";
 
     /**
      * wreply
@@ -60,6 +92,14 @@ public interface WSFedConstants {
      *
      */
     String WSFED_REPLY = "wreply";
+
+    /**
+     * wres
+     *
+     * This OPTIONAL parameter is the URL for the resource accessed.  This is a legacy parameter which isn’t typically
+     * used.  The wtrealm parameter is typically used instead
+     */
+    String WSFED_RESOURCE = "wres";
 
     /**
      * wctx
@@ -112,6 +152,8 @@ public interface WSFedConstants {
      * encodings is expressed by assertions under the WebBinding assertion defined in this specification.
      */
     String WSFED_ENCODING = "wencoding";
+
+    /*-------- 13.2.2 Requesting Security Tokens --------*/
 
     /**
      * wtrealm
@@ -175,6 +217,9 @@ public interface WSFedConstants {
      */
     String WSFED_REQUEST_URL = "wreqptr";
 
+
+    /*-------- 13.2.3 Returning Security Tokens --------*/
+
     /**
      * wresult
      *
@@ -195,6 +240,9 @@ public interface WSFedConstants {
      */
     String WSFED_RESULT_URL = "wresultptr";
 
+
+    /*-------- 15. Error Handling --------*/
+    /* These faults should normally be used for the SOAP Fault mechanism
 
     /**
      * No pseudonym found for the specified scope

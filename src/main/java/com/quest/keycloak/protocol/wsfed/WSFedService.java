@@ -16,7 +16,10 @@
 
 package com.quest.keycloak.protocol.wsfed;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.stream.Collectors;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HttpMethod;
@@ -51,16 +54,35 @@ import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.RealmsResource;
 
 /**
+ * All protocols added to keycloak have to extend the AuthorizationEndpointBase.
+ *
+ * In this case, for WS-FED, this class implements parts of the specifications
+ * (see http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html), namely the single sign-on
+ * (see section 13.6) and signout (see section 13.2.4).
+ *
+ * Note: this part of the protocol is for responding to browser requests, not the SOAP part of the WS protocol.
+ * This also means that this part doesn't implement any "server to server" communication. Everything is initiated by the
+ * client and handled through the browser.
+ *
  * Created on 5/19/15.
  */
 public class WSFedService extends AuthorizationEndpointBase {
     protected static final Logger logger = Logger.getLogger(WSFedService.class);
 
+    /**
+     * Standard constructor
+     * TODO figure out what a RealmModel and Eventbuilder do (because of course it's not documented)
+     * @param realm
+     * @param event
+     */
     public WSFedService(RealmModel realm, EventBuilder event) {
         super(realm, event);
     }
 
     /**
+     * Method called in case of a GET. Current supports only SIGNIN and SIGNOUT (cleanup handled as signout).
+     * WS-Fed protocol makes no difference between GET and POST for these steps.
+     * TODO no idea why this method is called "redirectBinding", rename?
      */
     @GET
     public Response redirectBinding() {
@@ -69,6 +91,10 @@ public class WSFedService extends AuthorizationEndpointBase {
     }
 
     /**
+     * Method called in case of a POST. Current supports only SIGNIN and SIGNOUT (cleanup handled as signout)
+     * WS-Fed protocol makes no difference between GET and POST for these steps.
+     * This method forces a redirection for authentication. This is not required by WS-Fed, but recommended by
+     * Keycloak AuthorizationEndpointBase
      */
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -77,23 +103,43 @@ public class WSFedService extends AuthorizationEndpointBase {
         return handleWsFedRequest(true);
     }
 
+    /**
+     * Returns the federation metadata document identifying the endpoint address as a SecurityTokenService
+     * (see http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html
+     * section 3.1.2.2 SecurityTokenServiceType).
+     *
+     * FIXME replace lazy xml template substitution with JAXB handling .... probably.
+     *
+     * @return a string containing the xml for the wsfed metadata
+     * @throws Exception IOException if there's a problem reading the wsfed-idp-metadata-template.xml
+     */
     @GET
     @Path("descriptor")
     @Produces(MediaType.APPLICATION_XML)
     public String getDescriptor() throws Exception {
         KeyManager keyManager = session.keys();
         KeyManager.ActiveRsaKey activeKey = keyManager.getActiveRsaKey(realm);
-
         InputStream is = getClass().getResourceAsStream("/wsfed-idp-metadata-template.xml");
-        String template = StreamUtil.readString(is);
-        template = template.replace("${idp.entityID}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
-        template = template.replace("${idp.sso.sts}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
-        template = template.replace("${idp.sso.passive}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
-        template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(activeKey.getCertificate()));
+        String template = "Error getting descriptor";
+        try(BufferedReader br = new BufferedReader(new InputStreamReader(is))){
+            template = br.lines().collect(Collectors.joining("\n"));
+            template = template.replace("${idp.entityID}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
+            template = template.replace("${idp.sso.sts}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
+            template = template.replace("${idp.sso.passive}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
+            template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(activeKey.getCertificate()));
+        }
         return template;
-
     }
 
+    /**
+     * Makes basic sanity checks on the general state of the connection and the request's parameters.
+     *
+     * NOTE: Many of the assumptions made in this method only hold true because attributes and pseudonyms are not
+     * considered.
+     *
+     * @param params the WSFedProtocolParameters obtained from the browser request.
+     * @return a response corresponding to an error page if the sanity checks fail, and null otherwise
+     */
     protected Response basicChecks(WSFedProtocolParameters params) {
         AuthenticationManager.AuthResult authResult = authenticateIdentityCookie();
 
@@ -139,12 +185,24 @@ public class WSFedService extends AuthorizationEndpointBase {
         return null;
     }
 
+    /**
+     * Checks if any of the signout parameters are set, or if the state is "logging out"
+     * @param params the WSFedProtocolParameters obtained from the browser request
+     * @return true if we are in signout situation
+     */
     protected boolean isSignout(WSFedProtocolParameters params) {
         return params.getWsfed_action().compareTo(WSFedConstants.WSFED_SIGNOUT_ACTION) == 0 ||
                 params.getWsfed_action().compareTo(WSFedConstants.WSFED_SIGNOUT_CLEANUP_ACTION) == 0 ||
                 params.getWsfed_action().compareTo(UserSessionModel.State.LOGGING_OUT.toString()) == 0;
     }
 
+    /**
+     * Checks that the client (the resource in this case) meets sanity tests
+     * i.e. known by keycloak, is enabled, and does not only have "bearer" tokens (tokens that only carry information)
+     * @param client in this case the client is the resource (which is also a client to keycloak)
+     * @param params the WSFedProtocolParameters obtained from the browser request
+     * @return a response corresponding to an error page if the sanity checks fail, and null otherwise
+     */
     protected Response clientChecks(ClientModel client, WSFedProtocolParameters params) {
         if(isSignout(params)) {
             return null; //client checks not required for logout
@@ -172,6 +230,15 @@ public class WSFedService extends AuthorizationEndpointBase {
         return null;
     }
 
+    /**
+     * Main method called when a GET or POST is called. Based on the WS-Fed action in the section 13.1.
+     * However, only sign-on and sign-out are implemented.
+     * Attributes are not implemented (501) and Pseudonym request is completely absent -> a request would return an error
+     *
+     * TODO figure out what the flow path is
+     * @param redirectToAuthentication if set to true, on login the authentication processor will redirect to the "flow path" (whatever that is)
+     * @return a javax Response for the web browser.
+     */
     public Response handleWsFedRequest(boolean redirectToAuthentication) {
         MultivaluedMap<String, String> requestParams = null;
         if(request.getHttpMethod() == HttpMethod.POST) {
@@ -185,7 +252,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         Response response = basicChecks(params);
         if (response != null) return response;
 
-        ClientModel client = realm.getClientByClientId(params.getWsfed_realm());
+        ClientModel client = realm.getClientByClientId(params.getWsfed_realm()); //at this point in a login this should be the resource's realm
         response = clientChecks(client, params);
         if (response != null) return response;
 
@@ -206,7 +273,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             return handleLogoutRequest(params, client);
         }
         else if (params.getWsfed_action().compareTo(UserSessionModel.State.LOGGING_OUT.toString()) == 0) {
-            logger.debug("** loging out request");
+            logger.debug("** logging out request");
             event.event(EventType.LOGOUT);
 
             return handleLogoutResponse(params, client);
@@ -218,6 +285,17 @@ public class WSFedService extends AuthorizationEndpointBase {
         }
     }
 
+    /**
+     * Method called for a login action (wa=wsignin1.0).
+     * What this method does in reality is prepare the ClientSessionModel and Loginprotocol (in a separate method for
+     * test purposes), and then hand them over to keycloak's AuthorizationEndpointBase's
+     * handleBrowserAuthenticationRequest.
+     *
+     * @param params in this case the client is the resource (which is also a client to keycloak)
+     * @param params the WSFedProtocolParameters obtained from the browser request
+     * @param redirectToAuthentication if set to true, on login the authentication processor will redirect to the "flow path"
+     * @return the response generated by keycloak's AuthorizationEndpointBase handleBrowserAuthenticationRequest, or an error page
+     */
     protected Response handleLoginRequest(WSFedProtocolParameters params, ClientModel client, boolean redirectToAuthentication) {
         logger.debug("** login request");
         event.event(EventType.LOGIN);
@@ -244,12 +322,18 @@ public class WSFedService extends AuthorizationEndpointBase {
         return newBrowserAuthentication(clientSession, false, redirectToAuthentication);
     }
 
+    /**
+     * This method exists only for debug purposes, as it solely to separate the creation of the loginProtocol creation
+     * from the handlelogin request method (this method will never be called separately
+     *
+     * FIXME remove this method, and set false directly in the handleBrowserAuthenticationRequest isPassive attribute
+     * @param clientSession the model of the session between the resource and keycloak (currently functioning as STS)
+     * @param isPassive true means that client is just checking if the user is already completely logged in. (not supported by WS-Fed)
+     * @param redirectToAuthentication if set to true, on login the authentication processor will redirect to the "flow path"
+     * @return the response from keycloak's handling of the browserAuthorisationRequest
+     */
     protected Response newBrowserAuthentication(ClientSessionModel clientSession, boolean isPassive, boolean redirectToAuthentication) {
         LoginProtocol wsfedProtocol = new WSFedLoginProtocol().setEventBuilder(event).setHttpHeaders(headers).setRealm(realm).setSession(session).setUriInfo(uriInfo);
-        return newBrowserAuthentication(clientSession, isPassive, redirectToAuthentication, wsfedProtocol);
-    }
-
-    protected Response newBrowserAuthentication(ClientSessionModel clientSession, boolean isPassive, boolean redirectToAuthentication, LoginProtocol wsfedProtocol) {
         return handleBrowserAuthenticationRequest(clientSession, wsfedProtocol, isPassive, redirectToAuthentication);
     }
 
@@ -339,6 +423,10 @@ public class WSFedService extends AuthorizationEndpointBase {
         return authManager.authenticateIdentityCookie(session, realm, false);
     }
 
+    /**
+     * Checks if the connection is https first, then checks if https is required.
+     * @return true if the connection is https, or if https is not required by the realm
+     */
     private boolean checkSsl() {
         if (uriInfo.getBaseUri().getScheme().equals("https")) {
             return true;
