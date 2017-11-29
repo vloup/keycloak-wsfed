@@ -17,7 +17,7 @@
 package com.quest.keycloak.protocol.wsfed.mappers;
 
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
@@ -65,7 +65,7 @@ public class OIDCUserPropertyMapper extends AbstractWsfedProtocolMapper implemen
 
     @Override
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
-                                            UserSessionModel userSession, ClientSessionModel clientSession) {
+                                            UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         UserPropertyMapper mapper = new UserPropertyMapper();
         return mapper.transformAccessToken(token, mappingModel, session, userSession, clientSession);
     }

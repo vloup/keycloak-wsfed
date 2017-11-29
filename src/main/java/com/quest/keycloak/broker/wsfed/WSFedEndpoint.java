@@ -16,7 +16,6 @@
 
 package com.quest.keycloak.broker.wsfed;
 
-import static org.keycloak.models.ClientSessionModel.Action.AUTHENTICATE;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -68,6 +67,8 @@ import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
+import org.keycloak.sessions.AuthenticationSessionModel;
+import org.keycloak.sessions.CommonClientSessionModel;
 import org.picketlink.identity.federation.core.wstrust.wrappers.Lifetime;
 import org.picketlink.identity.federation.core.wstrust.wrappers.RequestSecurityTokenResponse;
 import org.picketlink.identity.federation.core.wstrust.wrappers.RequestSecurityTokenResponseCollection;
@@ -161,7 +162,7 @@ public class WSFedEndpoint {
         if (wsfedAction.compareTo(WSFedConstants.WSFED_SIGNOUT_CLEANUP_ACTION) == 0)
             return handleSignoutResponse(context);
 
-        return ErrorPage.error(session, Messages.INVALID_REQUEST);
+        return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
     }
 
     protected Response handleSignoutRequest(String context) {
@@ -171,7 +172,7 @@ public class WSFedEndpoint {
             logger.error("no valid user session");
             event.event(EventType.LOGOUT);
             event.error(Errors.USER_SESSION_NOT_FOUND);
-            return ErrorPage.error(session, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
+            return ErrorPage.error(session, null, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
         }
 
         List<UserSessionModel> userSessions = session.sessions().getUserSessionByBrokerUserId(realm, result.getSession().getBrokerUserId());
@@ -205,7 +206,7 @@ public class WSFedEndpoint {
             logger.error("no valid user session");
             event.event(EventType.LOGOUT);
             event.error(Errors.USER_SESSION_NOT_FOUND);
-            return ErrorPage.error(session, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
+            return ErrorPage.error(session, null, Messages.IDENTITY_PROVIDER_UNEXPECTED_ERROR);
         }
 
         UserSessionModel userSession = result.getSession();
@@ -214,7 +215,7 @@ public class WSFedEndpoint {
             logger.error("usersession in different state");
             event.event(EventType.LOGOUT);
             event.error(Errors.USER_SESSION_NOT_FOUND);
-            return ErrorPage.error(session, Messages.SESSION_NOT_ACTIVE);
+            return ErrorPage.error(session, null, Messages.SESSION_NOT_ACTIVE);
         }
 
         return AuthenticationManager.finishBrowserLogout(session, realm, userSession, uriInfo, clientConnection, headers);
@@ -244,11 +245,12 @@ public class WSFedEndpoint {
                     Map<String, String> map = getContextParameters(decodedContext);
                     String redirectUri = URLDecoder.decode(map.get("redirectUri"), StandardCharsets.UTF_8.name());
                     if (decodedContext.contains("&code=")) {
-                        ClientSessionCode clientCode = ClientSessionCode.parse(map.get("code"), this.session, this.session.getContext().getRealm());
-                        if (clientCode != null && clientCode.isValid(AUTHENTICATE.name(), ClientSessionCode.ActionType.LOGIN)) {
+                        //TODO not sure that we indeed have a AuthenticationSessionModel here. It could potentially be a AuthenticatedClientSessionModel
+                        ClientSessionCode.ParseResult<AuthenticationSessionModel> clientCode = ClientSessionCode.parseResult(map.get("code"), this.session, this.session.getContext().getRealm(), event, AuthenticationSessionModel.class);
+                        if (clientCode != null && clientCode.getCode().isValid(CommonClientSessionModel.Action.AUTHENTICATE.name(), ClientSessionCode.ActionType.LOGIN)) {
                             String ACTIVE_CODE = "active_code"; // duplicating because ClientSessionCode.ACTIVE_CODE is private
                             // restore ACTIVE_CODE note because it must have been removed by parse() if code==activeCode
-                            clientCode.getClientSession().setNote(ACTIVE_CODE, map.get("code"));
+                            clientCode.getClientSession().setClientNote(ACTIVE_CODE, map.get("code"));
 
                             // set authorization code and redirectUri
                             identity.setCode(map.get("code"));
@@ -314,7 +316,7 @@ public class WSFedEndpoint {
             if (hasExpired(rstr)) {
                 event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
                 event.error(Errors.EXPIRED_CODE);
-                return ErrorPage.error(session, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+                return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
             }
 
            //TODO: Do we need to handle if the IDP sent back more than one token?
@@ -348,7 +350,7 @@ public class WSFedEndpoint {
             logger.error("assertion parsing failed", e);
             event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
             event.error(Errors.INVALID_SAML_RESPONSE);
-            return ErrorPage.error(session, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+            return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
         }
     }
 

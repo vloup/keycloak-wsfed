@@ -27,15 +27,7 @@ import com.quest.keycloak.protocol.wsfed.mappers.WSFedOIDCAccessTokenMapper;
 import org.keycloak.common.util.Base64Url;
 import org.keycloak.jose.jws.Algorithm;
 import org.keycloak.jose.jws.JWSBuilder;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeyManager;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.representations.AccessToken;
@@ -44,7 +36,7 @@ import org.keycloak.services.managers.ClientSessionCode;
 public class WSFedOIDCAccessTokenBuilder {
     private KeycloakSession session;
     private UserSessionModel userSession;
-    private ClientSessionModel clientSession;
+    private AuthenticatedClientSessionModel clientSession;
     private ClientSessionCode accessCode;
     private RealmModel realm;
     private ClientModel client;
@@ -68,11 +60,11 @@ public class WSFedOIDCAccessTokenBuilder {
         return this;
     }
 
-    public ClientSessionModel getClientSession() {
+    public AuthenticatedClientSessionModel getClientSession() {
         return clientSession;
     }
 
-    public WSFedOIDCAccessTokenBuilder setClientSession(ClientSessionModel clientSession) {
+    public WSFedOIDCAccessTokenBuilder setClientSession(AuthenticatedClientSessionModel clientSession) {
         this.clientSession = clientSession;
         return this;
     }
@@ -185,7 +177,7 @@ public class WSFedOIDCAccessTokenBuilder {
     }
 
     public AccessToken transformAccessToken(KeycloakSession session, AccessToken token, RealmModel realm, ClientModel client, UserModel user,
-                                            UserSessionModel userSession, ClientSessionModel clientSession) {
+                                            UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         Set<ProtocolMapperModel> mappings = new ClientSessionCode(session, realm, clientSession).getRequestedProtocolMappers();
         KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
         for (ProtocolMapperModel mapping : mappings) {

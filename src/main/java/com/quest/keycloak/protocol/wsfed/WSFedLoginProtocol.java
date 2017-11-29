@@ -32,12 +32,7 @@ import org.keycloak.connections.httpclient.HttpClientProvider;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.events.EventBuilder;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeyManager;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
@@ -45,6 +40,7 @@ import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
+import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
@@ -55,7 +51,12 @@ import java.io.InputStream;
 import java.security.KeyPair;
 
 /**
- * Implementation of keycloak's LoginProtocol. This is necessary
+ * Implementation of keycloak's LoginProtocol. The LoginProtocol is used during the authentication steps for login AND
+ * logout - for normal messages and error messages. In our case it called by the AuthorizationEndpoint and
+ * Authorisation manager. This class basically handles the protocol components - on a network message level - in the
+ * login an logout flows --> the authorisation mechanisms as such are handled by keycloak, but the protocol interface
+ * is handled by this class.
+ *
  * Created on 5/19/15.
  * @author dbarentine
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
@@ -80,66 +81,95 @@ public class WSFedLoginProtocol implements LoginProtocol {
 
     private EventBuilder event;
 
+    /**
+     * Sets the current KeycloakSession
+     * @param session the session used for the current connection
+     * @return this LoginProtcol (builder pattern)
+     */
     @Override
     public LoginProtocol setSession(KeycloakSession session) {
         this.session = session;
         return this;
     }
 
+    /**
+     * Sets the realm currently being used for the login-logout
+     * @param realm
+     * @return this LoginProtocol (builder pattern)
+     */
     @Override
     public LoginProtocol setRealm(RealmModel realm) {
         this.realm = realm;
         return this;
     }
 
+    /**
+     * TODO check which headers are actually used here
+     * @param headers
+     * @return this LoginProtocol (builder pattern)
+     */
     @Override
     public LoginProtocol setHttpHeaders(HttpHeaders headers) {
         this.headers = headers;
         return this;
     }
 
+    /**
+     * TODO findout which uriInfo is actually used here
+     * @param uriInfo
+     * @return this LoginProtocol (builder pattern)
+     */
     @Override
     public LoginProtocol setUriInfo(UriInfo uriInfo) {
         this.uriInfo = uriInfo;
         return this;
     }
 
+    /**
+     * Sets the current EventBuilder (unused though)
+     * @param event The event builder used for the current connection
+     * @return this LoginProtocol (builder pattern)
+     */
     @Override
     public LoginProtocol setEventBuilder(EventBuilder event) {
         this.event = event;
         return this;
     }
 
+    /**
+     * Returns a standard keycloak error page. The "cancelled by user" returns a wsfed error, all other errors
+     * generate a standard error message
+     * @param authSession the model of the session between the resource and keycloak
+     * @param error The error message to return
+     * @return The Response containing the error page
+     */
     @Override
-    public Response sendError(ClientSessionModel clientSession, Error error) {
+    public Response sendError(AuthenticationSessionModel authSession, Error error) {
         //Replaced cancelLogin
         if(error == Error.CANCELLED_BY_USER) {
-            return getErrorResponse(clientSession, WSFedConstants.WSFED_ERROR_NOTSIGNEDIN);
+            return ErrorPage.error(session, authSession, WSFedConstants.WSFED_ERROR_NOTSIGNEDIN);
         }
 
-        //TODO: This is new figure out what to do here.
-        return getErrorResponse(clientSession, Messages.FAILED_TO_PROCESS_RESPONSE);
+        return ErrorPage.error(session, authSession, Messages.FAILED_TO_PROCESS_RESPONSE);
     }
 
-    protected Response getErrorResponse(ClientSessionModel clientSession, String status) {
-        /* TODO: Does WS-Fed support error response like SAML (I think it does)
-        String redirect = clientSession.getRedirectUri();
-        UriBuilder redirectUri = UriBuilder.fromUri(redirect).queryParam(OAuth2Constants.ERROR, "access_denied");
-        if (state != null) {
-            redirectUri.queryParam(OAuth2Constants.STATE, state);
-        }
-        return Response.status(302).location(redirectUri.build()).build();*/
-
-        return ErrorPage.error(session, status);
-    }
-
+    /**
+     * This method sets the response to use when sending back the security tokens after a successful login.
+     * WS-FED can use any token type, but this method allows for three: OpenID connect (OIDC), SAML1.1 and
+     * SAML 2.0.
+     *
+     * This method is automatically called by keycloak's AuthenticationManager upon a successful login flow
+     * TODO check what information the ClientSessionCode actually carries
+     * @param userSession the details of the user session (some user details + state)
+     * @param clientSession the client session
+     * @return
+     */
     @Override
-    public Response authenticated(UserSessionModel userSession, ClientSessionCode accessCode) {
-        ClientSessionModel clientSession = accessCode.getClientSession();
+    public Response authenticated(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
+        ClientSessionCode<AuthenticatedClientSessionModel> accessCode = new ClientSessionCode<>(session, realm, clientSession);
         ClientModel client = clientSession.getClient();
         String context = clientSession.getNote(WSFedConstants.WSFED_CONTEXT);
         userSession.setNote(WSFedConstants.WSFED_REALM, client.getClientId());
-
         try {
             RequestSecurityTokenResponseBuilder builder = new RequestSecurityTokenResponseBuilder();
             KeyManager keyManager = session.keys();
@@ -156,6 +186,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
                     .setSigningKeyPairId(activeKey.getKid());
 
             if (useJwt(client)) {
+                //JSON webtoken (OIDC) set in client config
                 WSFedOIDCAccessTokenBuilder oidcBuilder = new WSFedOIDCAccessTokenBuilder();
                 oidcBuilder.setSession(session)
                             .setUserSession(userSession)
@@ -185,11 +216,11 @@ public class WSFedLoginProtocol implements LoginProtocol {
             return builder.buildResponse();
         } catch (Exception e) {
             logger.error("failed", e);
-            return ErrorPage.error(session, Messages.FAILED_TO_PROCESS_RESPONSE);
+            return ErrorPage.error(session, null, Messages.FAILED_TO_PROCESS_RESPONSE);
         }
     }
 
-    private SAML11AssertionType buildSAML11AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, ClientSessionModel clientSession)
+    private SAML11AssertionType buildSAML11AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, AuthenticatedClientSessionModel clientSession)
             throws DatatypeConfigurationException, ConfigurationException, ProcessingException {
         WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
         samlBuilder.setRealm(realm)
@@ -201,7 +232,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         return samlBuilder.build();
     }
 
-    private AssertionType buildSAML20AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, ClientSessionModel clientSession)
+    private AssertionType buildSAML20AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, AuthenticatedClientSessionModel clientSession)
             throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
         WSFedSAML2AssertionTypeBuilder samlBuilder = new WSFedSAML2AssertionTypeBuilder();
         samlBuilder.setRealm(realm)
@@ -235,7 +266,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
     }
 
     @Override
-    public void backchannelLogout(UserSessionModel userSession, ClientSessionModel clientSession) {
+    public void backchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         logger.debug("backchannelLogout");
         ClientModel client = clientSession.getClient();
         String redirectUri = null;
@@ -284,7 +315,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
     }
 
     @Override
-    public Response frontchannelLogout(UserSessionModel userSession, ClientSessionModel clientSession) {
+    public Response frontchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         logger.debug("frontchannelLogout");
         ClientModel client = clientSession.getClient();
         String redirectUri = null;
@@ -294,7 +325,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
-            return ErrorPage.error(session, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, null, Messages.FAILED_LOGOUT);
         }
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();
@@ -312,7 +343,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         String logoutUrl = userSession.getNote(WSFED_LOGOUT_BINDING_URI);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
-            return ErrorPage.error(session, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, null, Messages.FAILED_LOGOUT);
         }
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();
@@ -332,7 +363,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
      * {@inheritDoc}
      */
     @Override
-    public boolean requireReauthentication(UserSessionModel userSession, ClientSessionModel clientSession) {
+    public boolean requireReauthentication(UserSessionModel userSession, AuthenticationSessionModel authSession) {
     	return false;
     }
 

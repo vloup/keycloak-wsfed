@@ -19,11 +19,7 @@
 package com.quest.keycloak.protocol.wsfed.mappers;
 
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.protocol.saml.mappers.UserAttributeStatementMapper;
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
@@ -58,7 +54,7 @@ public class SAMLUserFullNameAttributeStatementMapper extends AbstractWsfedProto
     }
 
     @Override
-    public void transformAttributeStatement(AttributeStatementType attributeStatement, ProtocolMapperModel mappingModel, KeycloakSession session, UserSessionModel userSession, ClientSessionModel clientSession) {
+    public void transformAttributeStatement(AttributeStatementType attributeStatement, ProtocolMapperModel mappingModel, KeycloakSession session, UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         String attributeValue = resolveFullName(userSession);
         if (attributeValue == null) return;
         AttributeStatementHelper.addAttribute(attributeStatement, mappingModel, attributeValue);

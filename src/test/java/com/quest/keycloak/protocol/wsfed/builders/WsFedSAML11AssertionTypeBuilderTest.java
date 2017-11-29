@@ -20,17 +20,15 @@ package com.quest.keycloak.protocol.wsfed.builders;
 
 import com.quest.keycloak.common.wsfed.MockHelper;
 import com.quest.keycloak.common.wsfed.TestHelpers;
-import com.quest.keycloak.protocol.wsfed.builders.WsFedSAML11AssertionTypeBuilder;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLAttributeStatementMapper;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLRoleListMapper;
 import org.junit.Before;
 import org.junit.Test;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
-import org.keycloak.dom.saml.v1.assertion.SAML11AttributeStatementType;
 import org.keycloak.dom.saml.v1.assertion.SAML11AudienceRestrictionCondition;
 import org.keycloak.dom.saml.v1.assertion.SAML11AuthenticationStatementType;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.saml.common.constants.GeneralConstants;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
@@ -132,7 +130,7 @@ public class WsFedSAML11AssertionTypeBuilderTest {
         assertEquals(authType.getAuthenticationMethod().toString(), JBossSAMLURIConstants.AC_PASSWORD_PROTECTED_TRANSPORT.get());
         assertEquals(authType.getSubject().getSubjectConfirmation().getConfirmationMethod().get(0), URI.create("urn:oasis:names:tc:SAML:1.0:cm:bearer"));
 
-        ClientSessionModel clientSession = mockHelper.getClientSessionModel();
+        AuthenticatedClientSessionModel clientSession = mockHelper.getClientSessionModel();
         verify(clientSession, times(1)).setNote(WsFedSAML11AssertionTypeBuilder.WSFED_NAME_ID, mockHelper.getUserName());
         verify(clientSession, times(1)).setNote(WSFED_NAME_ID_FORMAT, mockHelper.getClientSessionNotes().get(GeneralConstants.NAMEID_FORMAT));
 

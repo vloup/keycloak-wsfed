@@ -41,6 +41,7 @@ import org.keycloak.saml.common.util.DocumentUtil;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.RealmsResource;
+import org.keycloak.sessions.AuthenticationSessionModel;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.matchers.EndsWith;
@@ -52,6 +53,7 @@ import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.*;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -107,7 +109,7 @@ public class WSFedServiceTest {
         }
 
         public WrappedWSFedService setRequest(HttpRequest request) {
-            this.request = request;
+            this.httpRequest = request;
             return this;
         }
 
@@ -425,15 +427,6 @@ public class WSFedServiceTest {
     }
 
     @Test
-    public void testHandleLogoutResponseInvalidState() throws Exception {
-        doReturn(UserSessionModel.State.LOGGING_IN).when(mockHelper.getUserSessionModel()).getState();
-
-        assertNotNull(service.handleLogoutResponse(null, null));
-        verify(event, times(1)).error(Errors.INVALID_SAML_LOGOUT_RESPONSE);
-        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.INVALID_REQUEST);
-    }
-
-    @Test
     public void testHandleLogoutResponse() throws Exception {
         doReturn(UserSessionModel.State.LOGGING_OUT).when(mockHelper.getUserSessionModel()).getState();
 
@@ -446,7 +439,7 @@ public class WSFedServiceTest {
         }
 
         //This is in browserLogout
-        verify(mockHelper.getUserSessionModel(), times(2)).getUser();
+        verify(mockHelper.getUserSessionModel(), times(1)).getUser();
     }
 
     @Test
@@ -497,7 +490,7 @@ public class WSFedServiceTest {
         params.setWsfed_context("context");
 
         doReturn(new HashSet<>(Arrays.asList(params.getWsfed_reply()))).when(mockHelper.getClient()).getRedirectUris();
-        doReturn(Arrays.asList(mockHelper.getClientSessionModel())).when(mockHelper.getUserSessionModel()).getClientSessions();
+        //doReturn(Collections.singletonMap(getMockHelper().getClient().getId(),mockHelper.getClientSessionModel())).when(mockHelper.getUserSessionModel().getAuthenticatedClientSessions());
         doReturn(mockHelper.getClient()).when(mockHelper.getClientSessionModel()).getClient();
 
         try {
@@ -512,10 +505,10 @@ public class WSFedServiceTest {
         verify(mockHelper.getUserSessionModel(), times(1)).setNote(eq(WSFedLoginProtocol.WSFED_CONTEXT), eq(params.getWsfed_context()));
         verify(mockHelper.getUserSessionModel(), times(1)).setNote(eq(AuthenticationManager.KEYCLOAK_LOGOUT_PROTOCOL), eq(WSFedLoginProtocol.LOGIN_PROTOCOL));
 
-        verify(mockHelper.getClientSessionModel(), times(1)).setAction(eq(ClientSessionModel.Action.LOGGED_OUT.name()));
+        verify(mockHelper.getClientSessionModel(), times(1)).setAction(eq(AuthenticatedClientSessionModel.Action.LOGGED_OUT.name()));
 
         //This is in browserLogout
-        verify(mockHelper.getUserSessionModel(), times(2)).getUser();
+        verify(mockHelper.getUserSessionModel(), times(1)).getUser();
     }
 
     @Test
@@ -530,45 +523,12 @@ public class WSFedServiceTest {
     }
 
     @Test
-    public void testHandleLoginRequestInvalidNonFormAuth() throws Exception {
-        WSFedProtocolParameters params = new WSFedProtocolParameters();
-        params.setWsfed_reply("https://redirectUri");
-        params.setWsfed_context("context");
-
-        doReturn(new HashSet<>(Arrays.asList(params.getWsfed_reply()))).when(mockHelper.getClient()).getRedirectUris();
-
-        ClientSessionModel clientSession = mock(ClientSessionModel.class);
-        UserSessionProvider provider = mockHelper.getSession().sessions();
-        doReturn(clientSession).when(provider).createClientSession(mockHelper.getRealm(), mockHelper.getClient());
-
-        Response errorResponse = mock(Response.class);
-        doReturn(errorResponse).when(service).newBrowserAuthentication(eq(clientSession), eq(false), eq(false));
-
-        Response response = service.handleLoginRequest(params, mockHelper.getClient(), false);
-        assertEquals(errorResponse, response);
-
-        verify(clientSession, times(1)).setAuthMethod(eq(WSFedLoginProtocol.LOGIN_PROTOCOL));
-        verify(clientSession, times(1)).setRedirectUri(eq(params.getWsfed_reply()));
-        verify(clientSession, times(1)).setAction(eq(ClientSessionModel.Action.AUTHENTICATE.name()));
-        verify(clientSession, times(1)).setNote(eq(WSFedConstants.WSFED_CONTEXT), eq(params.getWsfed_context()));
-        String issuer = RealmsResource.realmBaseUrl(mockHelper.getUriInfo()).build(mockHelper.getRealmName()).toString();
-        verify(clientSession, times(1)).setNote(eq(OIDCLoginProtocol.ISSUER), eq(issuer));
-    }
-
-    @Test
     public void testHandleLoginRequest() throws Exception {
         WSFedProtocolParameters params = new WSFedProtocolParameters();
         params.setWsfed_reply("https://redirectUri");
         params.setWsfed_context("context");
 
         doReturn(new HashSet<>(Arrays.asList(params.getWsfed_reply()))).when(mockHelper.getClient()).getRedirectUris();
-
-        ClientSessionModel clientSession = mock(ClientSessionModel.class);
-        when(clientSession.getId()).thenReturn(UUID.randomUUID().toString());
-        when(clientSession.getClient()).thenReturn(mockHelper.getClient());
-
-        UserSessionProvider provider = mockHelper.getSession().sessions();
-        doReturn(clientSession).when(provider).createClientSession(mockHelper.getRealm(), mockHelper.getClient());
 
         AuthenticationFlowModel flow = mock(AuthenticationFlowModel.class);
         doReturn(UUID.randomUUID().toString()).when(flow).getId();
@@ -579,11 +539,22 @@ public class WSFedServiceTest {
 
         ResteasyProviderFactory.pushContext(HttpResponse.class, response);
 
+        HttpHeaders headers = mock(HttpHeaders.class);
+        when(headers.getCookies()).thenReturn(Collections.emptyMap());
+        ResteasyProviderFactory.pushContext(HttpHeaders.class, headers);
+
         //This won't complete but if we get the correct error page it means that we have hit processor.authenticate which is good enough for us in this test
         Response response = service.handleLoginRequest(params, mockHelper.getClient(), false);
         assertNotNull(response);
 
-        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.INVALID_CODE);
+        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.EXPIRED_CODE);
+
+        verify(mockHelper.getAuthSessionModel(), times(1)).setProtocol(eq(WSFedLoginProtocol.LOGIN_PROTOCOL));
+        verify(mockHelper.getAuthSessionModel(), times(1)).setRedirectUri(eq(params.getWsfed_reply()));
+        verify(mockHelper.getAuthSessionModel(), times(1)).setAction(eq(AuthenticationSessionModel.Action.AUTHENTICATE.name()));
+        verify(mockHelper.getAuthSessionModel(), times(1)).setClientNote(eq(WSFedConstants.WSFED_CONTEXT), eq(params.getWsfed_context()));
+        String issuer = RealmsResource.realmBaseUrl(mockHelper.getUriInfo()).build(mockHelper.getRealmName()).toString();
+        verify(mockHelper.getAuthSessionModel(), times(1)).setClientNote(eq(OIDCLoginProtocol.ISSUER), eq(issuer));
     }
     @Test
     @Ignore
@@ -605,13 +576,13 @@ public class WSFedServiceTest {
 
         ResteasyProviderFactory.pushContext(HttpResponse.class, response);
 
-        ClientSessionModel clientSession = mock(ClientSessionModel.class);
-        when(clientSession.getId()).thenReturn(UUID.randomUUID().toString());
+        AuthenticationSessionModel authSession = mock(AuthenticationSessionModel.class);
+        when(authSession.getId()).thenReturn(UUID.randomUUID().toString());
         //when(clientSession.getNote(ClientSessionModel.ACTION_KEY)).thenReturn(KeycloakModelUtils.generateCodeSecret()); //This is normally set in method but because we are mocked we need to return it
-        when(clientSession.getClient()).thenReturn(mockHelper.getClient());
+        when(authSession.getClient()).thenReturn(mockHelper.getClient());
 
         UserSessionProvider provider = mockHelper.getSession().sessions();
-        doReturn(clientSession).when(provider).createClientSession(mockHelper.getRealm(), mockHelper.getClient());
+        doReturn(authSession).when(provider).createClientSession(mockHelper.getRealm(), mockHelper.getClient(), mockHelper.getUserSessionModel());
 
         Response response = service.handleLoginRequest(params, mockHelper.getClient(), true);
         assertNotNull(response);

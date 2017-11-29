@@ -17,7 +17,7 @@
 package com.quest.keycloak.protocol.wsfed.mappers;
 
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
@@ -25,5 +25,5 @@ import org.keycloak.protocol.ProtocolMapper;
 
 public interface WSFedSAMLRoleListMapper extends ProtocolMapper {
     void mapRoles(AttributeStatementType roleAttributeStatement, ProtocolMapperModel mappingModel, KeycloakSession session,
-                  UserSessionModel userSession, ClientSessionModel clientSession);
+                  UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
 }

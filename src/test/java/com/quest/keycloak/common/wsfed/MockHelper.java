@@ -16,6 +16,7 @@
 
 package com.quest.keycloak.common.wsfed;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -27,12 +28,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -40,22 +36,17 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import org.keycloak.common.ClientConnection;
+import org.keycloak.common.enums.SslRequired;
 import org.keycloak.common.util.CertificateUtils;
 import org.keycloak.forms.login.LoginFormsProvider;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeyManager;
+import org.keycloak.models.*;
 import org.keycloak.models.KeyManager.ActiveHmacKey;
-import org.keycloak.models.KeycloakContext;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
-import org.keycloak.models.UserSessionProvider;
 import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.services.managers.ClientSessionCode;
+import org.keycloak.sessions.AuthenticationSessionModel;
+import org.keycloak.sessions.AuthenticationSessionProvider;
+import org.keycloak.sessions.StickySessionEncoderProvider;
 import org.keycloak.storage.UserStorageManager;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -99,7 +90,9 @@ public class MockHelper {
     @Mock
     private KeycloakSessionFactory sessionFactory;
     @Mock
-    private ClientSessionModel clientSessionModel;
+    private AuthenticatedClientSessionModel clientSession;
+    @Mock
+    private AuthenticationSessionModel authSession;
     @Mock
     private ClientSessionCode accessCode;
     @Mock
@@ -121,13 +114,14 @@ public class MockHelper {
         initializeUriInfo();
         initializeRealmMock();
         initializeClientModelMock();
-        intializeUserModelMock();
-        intializeLoginFormsProviderMock();
-        intializeKeycloakSessionFactoryMock();
-        intializeKeycloakSessionMock();
-        intializeClientSessionModelMock();
+        initializeUserModelMock();
+        initializeLoginFormsProviderMock();
+        initializeKeycloakSessionFactoryMock();
+        initializeKeycloakSessionMock();
+        initializeClientSessionModelMock();
+        initializeAuthSessionModelMock();
         initializeClientSessionCodeMock();
-        intializeUserSessionModelMock();
+        initializeUserSessionModelMock();
         return this;
     }
 
@@ -153,6 +147,7 @@ public class MockHelper {
         when(getRealm().isEnabled()).thenReturn(true);
         when(getRealm().getAccessCodeLifespan()).thenReturn(getAccessCodeLifespan());
         when(getRealm().getAccessTokenLifespan()).thenReturn(getAccessTokenLifespan());
+        when(getRealm().getSslRequired()).thenReturn(SslRequired.ALL);
         generateActiveRealmKeys(keyManager, activeKey, realm);
     }
 
@@ -213,37 +208,47 @@ public class MockHelper {
         when(realm.getClientByClientId(getClientId())).thenReturn(getClient());
     }
 
-    protected void intializeUserModelMock() {
+    protected void initializeUserModelMock() {
         when(getUser().getId()).thenReturn(UUID.randomUUID().toString());
         when(getUser().getUsername()).thenReturn(getUserName());
         when(getUser().getEmail()).thenReturn(getEmail());
     }
 
-    protected void intializeLoginFormsProviderMock() {
+    protected void initializeLoginFormsProviderMock() {
         when(getLoginFormsProvider().setError(anyString())).thenReturn(getLoginFormsProvider());
         when(getLoginFormsProvider().createErrorPage()).thenReturn(mock(Response.class));
     }
 
-    protected void intializeKeycloakSessionMock() {
+    protected void initializeKeycloakSessionMock() {
         when(getSession().getProvider(LoginFormsProvider.class)).thenReturn(getLoginFormsProvider());
+        when(getSession().getProvider(LoginFormsProvider.class).setAuthenticationSession(any())).thenReturn(getLoginFormsProvider());
         when(getSession().getKeycloakSessionFactory()).thenReturn(getSessionFactory());
         when(getSession().users()).thenReturn(mock(UserStorageManager.class));
         when(getSession().users().getUserById(user.getId(), realm)).thenReturn(user);
+        when(getSession().getProvider(StickySessionEncoderProvider.class)).thenReturn(mock(StickySessionEncoderProvider.class));
 
         when(getSession().sessions()).thenReturn(mock(UserSessionProvider.class));
         when(getSession().sessions().getUserSessionByBrokerSessionId(realm, userSessionModel.getBrokerSessionId())).thenReturn(userSessionModel);
         when(getSession().sessions().getUserSessionByBrokerUserId(realm, getUser().getId())).thenReturn(Arrays.asList(userSessionModel));
 
-        when(getSession().getContext()).thenReturn(mock(KeycloakContext.class));
+        AuthenticationSessionProvider authProvider = mock(AuthenticationSessionProvider.class);
+        when(authProvider.createAuthenticationSession(getRealm(), getClient())).thenReturn(getAuthSessionModel());
+        when(getSession().authenticationSessions()).thenReturn(authProvider);
+
+        KeycloakContext context = mock(KeycloakContext.class);
+        when(getSession().getContext()).thenReturn(context);
+        when(context.getUri()).thenReturn(uriInfo);
+        ClientConnection clientConnection = mock(ClientConnection.class);
+        when(context.getConnection()).thenReturn(clientConnection);
     }
 
-    protected void intializeKeycloakSessionFactoryMock() {
+    protected void initializeKeycloakSessionFactoryMock() {
         for(Map.Entry<ProtocolMapperModel, ProtocolMapper> mapper : getProtocolMappers().entrySet()) {
             when(getSessionFactory().getProviderFactory(ProtocolMapper.class, mapper.getKey().getProtocolMapper())).thenReturn(mapper.getValue());
         }
     }
 
-    protected void intializeClientSessionModelMock() {
+    protected void initializeClientSessionModelMock() {
         when(getClientSessionModel().getId()).thenReturn(UUID.randomUUID().toString());
         when(getClientSessionModel().getClient()).thenReturn(getClient());
         when(getClientSessionModel().getRedirectUri()).thenReturn(getClientId());
@@ -260,15 +265,22 @@ public class MockHelper {
         when(getClientSessionModel().getProtocolMappers()).thenReturn(pm);
     }
 
+    protected void initializeAuthSessionModelMock() {
+        when(getAuthSessionModel().getClient()).thenReturn(getClient());
+        when(getAuthSessionModel().getRedirectUri()).thenReturn(getClientId());
+    }
+
     protected void initializeClientSessionCodeMock() {
         when(getAccessCode().getClientSession()).thenReturn(getClientSessionModel());
         when(getAccessCode().getRequestedProtocolMappers()).thenReturn(getProtocolMappers().keySet());
     }
 
-    protected void intializeUserSessionModelMock() {
+    protected void initializeUserSessionModelMock() {
         when(getUserSessionModel().getId()).thenReturn(UUID.randomUUID().toString());
         when(getUserSessionModel().getBrokerSessionId()).thenReturn(UUID.randomUUID().toString());
         when(getUserSessionModel().getUser()).thenReturn(getUser());
+        Map<String, AuthenticatedClientSessionModel> map = Collections.singletonMap(getClient().getId(), getClientSessionModel());
+        when(getUserSessionModel().getAuthenticatedClientSessions()).thenReturn(map);
         doReturn(getUser().getId()).when(getUserSessionModel()).getBrokerUserId();
     }
 
@@ -425,13 +437,21 @@ public class MockHelper {
         return this;
     }
 
-    public ClientSessionModel getClientSessionModel() {
-        return clientSessionModel;
+    public AuthenticatedClientSessionModel getClientSessionModel() {
+        return clientSession;
     }
 
-    public MockHelper setClientSessionModel(ClientSessionModel clientSessionModel) {
-        this.clientSessionModel = clientSessionModel;
+    public MockHelper setClientSessionModel(AuthenticatedClientSessionModel clientSession) {
+        this.clientSession = clientSession;
         return this;
+    }
+
+    public AuthenticationSessionModel getAuthSessionModel() {
+        return authSession;
+    }
+
+    public void setAuthSessionModel(AuthenticationSessionModel authSession) {
+        this.authSession = authSession;
     }
 
     public ClientSessionCode getAccessCode() {

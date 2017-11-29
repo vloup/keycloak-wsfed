@@ -18,13 +18,14 @@
 
 package com.quest.keycloak.protocol.wsfed.builders;
 
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.resources.RealmsResource;
+import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.core.UriInfo;
 
@@ -44,7 +45,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
     public static final String SAML_PERSISTENT_NAME_ID_FOR = "saml.persistent.name.id.for";
 
     protected UserSessionModel userSession;
-    protected ClientSessionModel clientSession;
+    protected AuthenticatedClientSessionModel clientSession;
     protected ClientSessionCode accessCode;
     protected RealmModel realm;
     protected KeycloakSession session;
@@ -59,11 +60,11 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
         return (T)this;
     }
 
-    public ClientSessionModel getClientSession() {
+    public AuthenticatedClientSessionModel getClientSession() {
         return clientSession;
     }
 
-    public T setClientSession(ClientSessionModel clientSession) {
+    public T setClientSession(AuthenticatedClientSessionModel clientSession) {
         this.clientSession = clientSession;
         return (T)this;
     }

@@ -29,14 +29,12 @@ import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.provider.AbstractIdentityProvider;
 import org.keycloak.broker.provider.AuthenticationRequest;
-import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
 import org.keycloak.broker.provider.IdentityProviderDataMarshaller;
 import org.keycloak.broker.provider.util.SimpleHttp;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.common.util.StreamUtil;
 import org.keycloak.events.EventBuilder;
-import org.keycloak.models.ClientSessionModel;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.KeyManager;
 import org.keycloak.models.KeycloakSession;
@@ -62,7 +60,7 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
             String destinationUrl = getConfig().getSingleSignOnServiceUrl();
             String reply = request.getRedirectUri();
             String wsFedRealm = getConfig().getWsFedRealm();
-            String context = request.getState();
+            String context = request.getState().getEncodedState();
             // not sure how valuable this null-check is in real life, but it breaks in the tests without it.
             if( request.getHttpRequest() != null && request.getHttpRequest().getUri() != null ) {
                 MultivaluedMap<String, String> params = request.getHttpRequest().getUri().getQueryParameters();
@@ -87,10 +85,6 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
     @Override
     public Response retrieveToken(KeycloakSession session, FederatedIdentityModel identity) {
         return Response.ok(identity.getToken()).build();
-    }
-
-    @Override
-    public void attachUserSession(UserSessionModel userSession, ClientSessionModel clientSession, BrokeredIdentityContext context) {
     }
 
     @Override
@@ -123,7 +117,7 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
         if (singleLogoutServiceUrl == null || singleLogoutServiceUrl.trim().equals("") || !getConfig().isBackchannelSupported()) return;
 
         try {
-            int status = SimpleHttp.doGet(singleLogoutServiceUrl)
+            int status = SimpleHttp.doGet(singleLogoutServiceUrl, session)
                     .param(WSFedConstants.WSFED_ACTION, WSFedConstants.WSFED_SIGNOUT_ACTION)
                     .param(WSFedConstants.WSFED_REALM, getConfig().getWsFedRealm()).asStatus();
 

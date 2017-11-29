@@ -55,23 +55,23 @@ public class WSFedValidator {
             if (!checkSsl(uriInfo, clientConnection)) {
                 event.event(EventType.LOGIN);
                 event.error(Errors.SSL_REQUIRED);
-                return ErrorPage.error(session, Messages.HTTPS_REQUIRED);
+                return ErrorPage.error(session, null, Messages.HTTPS_REQUIRED);
             }
             if (!realm.isEnabled()) {
                 event.event(EventType.LOGIN);
                 event.error(Errors.REALM_DISABLED);
-                return ErrorPage.error(session, Messages.REALM_NOT_ENABLED);
+                return ErrorPage.error(session, null, Messages.REALM_NOT_ENABLED);
             }
 
             if (wsfedAction == null) {
                 event.event(EventType.LOGIN);
                 event.error(Errors.INVALID_REQUEST);
-                return ErrorPage.error(session, Messages.INVALID_REQUEST);
+                return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
             }
         } catch (Exception e) {
             event.event(EventType.LOGIN_ERROR);
             event.error(e.getLocalizedMessage());
-            return ErrorPage.error(session, Messages.UNEXPECTED_ERROR_HANDLING_REQUEST);
+            return ErrorPage.error(session, null, Messages.UNEXPECTED_ERROR_HANDLING_REQUEST);
         }
         return null;
     }
