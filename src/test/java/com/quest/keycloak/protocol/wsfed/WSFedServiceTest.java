@@ -20,6 +20,7 @@ import com.quest.keycloak.common.wsfed.MockHelper;
 import com.quest.keycloak.common.wsfed.TestHelpers;
 import com.quest.keycloak.common.wsfed.WSFedConstants;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedProtocolParameters;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.specimpl.MultivaluedMapImpl;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.HttpResponse;
@@ -62,6 +63,8 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class WSFedServiceTest {
+    protected static final Logger logger = Logger.getLogger(WSFedServiceTest.class);
+
     @Mock private EventBuilder event;
     @Mock private AuthenticationManager authManager;
     @Mock private AuthenticationManager.AuthResult authResult;
@@ -439,7 +442,11 @@ public class WSFedServiceTest {
         }
 
         //This is in browserLogout
-        verify(mockHelper.getUserSessionModel(), times(1)).getUser();
+        if (logger.isDebugEnabled()) {
+            verify(mockHelper.getUserSessionModel(), times(2)).getUser();
+        } else {
+            verify(mockHelper.getUserSessionModel(), times(1)).getUser();
+        }
     }
 
     @Test
@@ -508,7 +515,11 @@ public class WSFedServiceTest {
         verify(mockHelper.getClientSessionModel(), times(1)).setAction(eq(AuthenticatedClientSessionModel.Action.LOGGED_OUT.name()));
 
         //This is in browserLogout
-        verify(mockHelper.getUserSessionModel(), times(1)).getUser();
+        if (logger.isDebugEnabled()) {
+            verify(mockHelper.getUserSessionModel(), times(2)).getUser();
+        } else {
+            verify(mockHelper.getUserSessionModel(), times(1)).getUser();
+        }
     }
 
     @Test
