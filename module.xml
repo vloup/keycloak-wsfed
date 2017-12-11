@@ -7,6 +7,7 @@
     </resources>
 
     <dependencies>
+        <module name="org.keycloak.keycloak-common"/>
         <module name="org.keycloak.keycloak-server-spi"/>
         <module name="org.keycloak.keycloak-server-spi-private"/>
         <module name="org.keycloak.keycloak-saml-core"/>
@@ -20,6 +21,6 @@
         <module name="javax.api"/>
         <module name="org.keycloak.keycloak-common"/>
         <module name="org.apache.httpcomponents"/>
-        <module name="org.apache.commons.lang3"/>
+        <module name="org.apache.commons.lang"/>
     </dependencies>
 </module>

@@ -17,7 +17,14 @@
 package com.quest.keycloak.broker.wsfed;
 
 import org.jboss.logging.Logger;
-import org.keycloak.dom.saml.v2.assertion.*;
+import org.keycloak.dom.saml.v2.assertion.AssertionType;
+import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
+import org.keycloak.dom.saml.v2.assertion.AttributeType;
+import org.keycloak.dom.saml.v2.assertion.AudienceRestrictionType;
+import org.keycloak.dom.saml.v2.assertion.ConditionAbstractType;
+import org.keycloak.dom.saml.v2.assertion.EncryptedAssertionType;
+import org.keycloak.dom.saml.v2.assertion.NameIDType;
+import org.keycloak.dom.saml.v2.assertion.SubjectType;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
@@ -41,21 +48,13 @@ import org.keycloak.services.messages.Messages;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 import javax.ws.rs.core.Response;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.namespace.QName;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.StringReader;
 import java.net.URI;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -143,43 +142,6 @@ public class SAML2RequestedToken implements RequestedToken {
         return null;
     }
 
-    private static Document createXmlDocument(String response) throws ProcessingException, ParserConfigurationException {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true);
-        DocumentBuilder builder = null;
-
-        builder = factory.newDocumentBuilder();
-        InputSource source = new InputSource();
-        source.setCharacterStream(new StringReader(response));
-        try {
-            Document document = builder.parse(source);
-            JAXPValidationUtil.checkSchemaValidation(document);
-            return document;
-        } catch (SAXException | IOException e) {
-            throw new ProcessingException("Error while extracting SAML from WSFed response.");
-        }
-    }
-
-    private Document extractSamlDocument(Document document) throws ProcessingException {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            XPath xpath = XPathFactory.newInstance().newXPath();
-            XPathExpression xPathExpression = xpath.compile("//*[local-name() = 'Assertion']");
-
-            NodeList samlNodes = (NodeList) xPathExpression.evaluate(document, XPathConstants.NODESET);
-            Document samlDoc = factory.newDocumentBuilder().newDocument();
-            for (int i = 0; i < samlNodes.getLength(); i++) {
-                Node node = samlNodes.item(i);
-                Node copyNode = samlDoc.importNode(node, true);
-                samlDoc.appendChild(copyNode);
-            }
-            return samlDoc;
-        } catch (XPathExpressionException | ParserConfigurationException e) {
-            throw new ProcessingException("Error while extracting SAML Assertion from WSFed XML document.");
-        }
-    }
-
     protected NameIDType getSubjectNameID() {
         if (subjectNameID == null) {
             SubjectType subject = saml2Assertion.getSubject();
@@ -195,6 +157,18 @@ public class SAML2RequestedToken implements RequestedToken {
     @Override
     public String getUsername() {
         return getId();
+    }
+
+    @Override
+    public String getLastName() {
+        // TODO: implement getLastName
+        return null;
+    }
+
+    @Override
+    public String getFirstName() {
+        // TODO: implement getFirstName
+        return null;
     }
 
     @Override
@@ -286,7 +260,6 @@ public class SAML2RequestedToken implements RequestedToken {
         return saml2Assertion;
     }
 
-    public Object getToken() {
-        return saml2Assertion;
-    }
+    @Override
+    public Object getToken() { return saml2Assertion; }
 }

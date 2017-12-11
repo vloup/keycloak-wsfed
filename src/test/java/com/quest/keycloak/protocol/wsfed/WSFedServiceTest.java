@@ -24,7 +24,9 @@ import org.jboss.resteasy.specimpl.MultivaluedMapImpl;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.HttpResponse;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -41,6 +43,7 @@ import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.RealmsResource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.internal.matchers.EndsWith;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -66,6 +69,7 @@ public class WSFedServiceTest {
     @Mock private HttpRequest request;
     @Mock private HttpResponse response;
     @Mock private ClientConnection clientConnection;
+    @Mock private IdentityProviderModel identityProvider;
 
     private MockHelper mockHelper;
     private WrappedWSFedService service;
@@ -80,6 +84,11 @@ public class WSFedServiceTest {
 
         service = spy(new WrappedWSFedService(mockHelper.getRealm(), this.event));
         injectMocks(service);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        ResteasyProviderFactory.clearContextData();
     }
 
     protected class WrappedWSFedService extends WSFedService {
@@ -575,5 +584,42 @@ public class WSFedServiceTest {
         assertNotNull(response);
 
         assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.INVALID_CODE);
+    }
+    @Test
+    @Ignore
+    public void testHandleLoginRequestRedirectToIdentityProvider() throws Exception {
+        WSFedProtocolParameters params = new WSFedProtocolParameters();
+        params.setWsfed_reply("https://redirectUri");
+        params.setWsfed_context("context");
+        // The home realm parameter 'whr' is used to log in using an identity provider
+        params.setWsfed_home_realm("dummyIdentityProvider");
+
+        doReturn(identityProvider).when(mockHelper.getRealm()).getIdentityProviderByAlias("dummyIdentityProvider");
+        doReturn(new HashSet<>(Arrays.asList(params.getWsfed_reply()))).when(mockHelper.getClient()).getRedirectUris();
+        AuthenticationFlowModel flow = mock(AuthenticationFlowModel.class);
+        doReturn(UUID.randomUUID().toString()).when(flow).getId();
+        doReturn(flow).when(mockHelper.getRealm()).getBrowserFlow();
+
+        doReturn(SslRequired.EXTERNAL).when(mockHelper.getRealm()).getSslRequired();
+        doReturn(new MultivaluedMapImpl<String, Object>()).when(response).getOutputHeaders();
+
+        ResteasyProviderFactory.pushContext(HttpResponse.class, response);
+
+        ClientSessionModel clientSession = mock(ClientSessionModel.class);
+        when(clientSession.getId()).thenReturn(UUID.randomUUID().toString());
+        //when(clientSession.getNote(ClientSessionModel.ACTION_KEY)).thenReturn(KeycloakModelUtils.generateCodeSecret()); //This is normally set in method but because we are mocked we need to return it
+        when(clientSession.getClient()).thenReturn(mockHelper.getClient());
+
+        UserSessionProvider provider = mockHelper.getSession().sessions();
+        doReturn(clientSession).when(provider).createClientSession(mockHelper.getRealm(), mockHelper.getClient());
+
+        Response response = service.handleLoginRequest(params, mockHelper.getClient(), true);
+        assertNotNull(response);
+
+        // The status code is going to change to 303 or 302!
+        assertEquals(response.getStatus(), Response.Status.FOUND.getStatusCode());
+        assertNotNull(response.getLocation());
+
+        assertThat(response.getLocation().getPath(), new EndsWith("broker/dummyIdentityProvider/login"));
     }
 }

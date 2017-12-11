@@ -279,6 +279,16 @@ public class WSFedEndpoint {
                 identity.setEmail(token.getEmail());
             }
 
+            String givenName;
+            if ((givenName = token.getFirstName()) != null) {
+                identity.setFirstName(givenName);
+            }
+
+            String surName;
+            if ((surName = token.getLastName()) != null) {
+                identity.setLastName(surName);
+            }
+
             if (config.isStoreToken()) {
                 identity.setToken(wsfedResponse);
             }
@@ -316,7 +326,7 @@ public class WSFedEndpoint {
                 token = new SAML2RequestedToken(session, wsfedResponse, rt, realm);
             }
             else if (rstr.getTokenType().compareTo(URI.create("urn:oasis:names:tc:SAML:1.0:assertion")) == 0) {
-                throw new NotImplementedException("We don't currently support a token type of urn:oasis:names:tc:SAML:1.0:assertion");
+                token = new SAML11RequestedToken(wsfedResponse, rt, realm);
             }
             else if (rstr.getTokenType().compareTo(URI.create("urn:ietf:params:oauth:token-type:jwt")) == 0) {
                 throw new NotImplementedException("We don't currently support a token type of urn:ietf:params:oauth:token-type:jwt");
