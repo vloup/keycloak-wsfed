@@ -57,6 +57,9 @@ import java.net.URI;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 
+/**
+ * This class is responsible for building the
+ */
 public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
     protected String requestIssuer;
     protected int tokenExpiration;

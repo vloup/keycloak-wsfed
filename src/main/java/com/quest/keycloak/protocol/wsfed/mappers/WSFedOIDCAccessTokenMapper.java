@@ -16,7 +16,7 @@
 
 package com.quest.keycloak.protocol.wsfed.mappers;
 
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
@@ -25,5 +25,5 @@ import org.keycloak.representations.AccessToken;
 
 public interface WSFedOIDCAccessTokenMapper extends ProtocolMapper {
     AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
-                                     UserSessionModel userSession, ClientSessionModel clientSession);
+                                     UserSessionModel userSession, AuthenticatedClientSessionModel clientSession);
 }

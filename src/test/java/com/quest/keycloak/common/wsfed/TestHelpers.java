@@ -47,6 +47,7 @@ import java.util.Iterator;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -150,6 +151,7 @@ public class TestHelpers {
     }
 
     public static void assertErrorPage(LoginFormsProvider loginFormsProvider, String message) {
+        verify(loginFormsProvider, times(1)).setAuthenticationSession(any());
         verify(loginFormsProvider, times(1)).setError(eq(message));
         verify(loginFormsProvider, times(1)).createErrorPage();
     }

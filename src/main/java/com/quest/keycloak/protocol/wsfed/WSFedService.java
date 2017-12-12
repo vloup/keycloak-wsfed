@@ -39,19 +39,17 @@ import org.keycloak.common.util.StreamUtil;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeyManager;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.AuthorizationEndpointBase;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.services.ErrorPage;
+import org.keycloak.services.ErrorPageException;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.services.resources.RealmsResource;
+import org.keycloak.sessions.AuthenticationSessionModel;
 
 /**
  * All protocols added to keycloak have to extend the AuthorizationEndpointBase.
@@ -71,8 +69,8 @@ public class WSFedService extends AuthorizationEndpointBase {
 
     /**
      * Standard constructor
-     * TODO figure out what a RealmModel and Eventbuilder do (because of course it's not documented)
-     * @param realm
+     * TODO figure out what Eventbuilder does (because of course it's not documented)
+     * @param realm The keycloak realm that represents this WSFedService (client service)
      * @param event
      */
     public WSFedService(RealmModel realm, EventBuilder event) {
@@ -143,15 +141,11 @@ public class WSFedService extends AuthorizationEndpointBase {
     protected Response basicChecks(WSFedProtocolParameters params) {
         AuthenticationManager.AuthResult authResult = authenticateIdentityCookie();
 
-        if (!checkSsl()) {
-            event.event(EventType.LOGIN);
-            event.error(Errors.SSL_REQUIRED);
-            return ErrorPage.error(session, Messages.HTTPS_REQUIRED);
-        }
-        if (!realm.isEnabled()) {
-            event.event(EventType.LOGIN_ERROR);
-            event.error(Errors.REALM_DISABLED);
-            return ErrorPage.error(session, Messages.REALM_NOT_ENABLED);
+        try {
+            checkSsl();
+            checkRealm();
+        } catch (ErrorPageException e) {
+            return e.getResponse();
         }
 
         if (params.getWsfed_action() == null) {
@@ -163,7 +157,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (params.getWsfed_action() == null) {
             event.event(EventType.LOGIN);
             event.error(Errors.INVALID_REQUEST);
-            return ErrorPage.error(session, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session,null, Messages.INVALID_REQUEST);
         }
 
         if (params.getWsfed_realm() == null) {
@@ -178,7 +172,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             else { //If it's not a signout event than wtrealm is required
                 event.event(EventType.LOGIN);
                 event.error(Errors.INVALID_CLIENT);
-                return ErrorPage.error(session, Messages.INVALID_REQUEST);
+                return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
             }
         }
 
@@ -211,18 +205,18 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (client == null) {
             event.event(EventType.LOGIN);
             event.error(Errors.CLIENT_NOT_FOUND);
-            return ErrorPage.error(session, Messages.UNKNOWN_LOGIN_REQUESTER);
+            return ErrorPage.error(session, null,Messages.UNKNOWN_LOGIN_REQUESTER);
         }
 
         if (!client.isEnabled()) {
             event.event(EventType.LOGIN);
             event.error(Errors.CLIENT_DISABLED);
-            return ErrorPage.error(session, Messages.LOGIN_REQUESTER_NOT_ENABLED);
+            return ErrorPage.error(session, null ,Messages.LOGIN_REQUESTER_NOT_ENABLED);
         }
         if ((client instanceof ClientModel) && client.isBearerOnly()) {
             event.event(EventType.LOGIN);
             event.error(Errors.NOT_ALLOWED);
-            return ErrorPage.error(session, Messages.BEARER_ONLY);
+            return ErrorPage.error(session, null,Messages.BEARER_ONLY);
         }
 
         session.getContext().setClient(client);
@@ -241,8 +235,8 @@ public class WSFedService extends AuthorizationEndpointBase {
      */
     public Response handleWsFedRequest(boolean redirectToAuthentication) {
         MultivaluedMap<String, String> requestParams = null;
-        if(request.getHttpMethod() == HttpMethod.POST) {
-            requestParams = request.getFormParameters();
+        if(httpRequest.getHttpMethod() == HttpMethod.POST) {
+            requestParams = httpRequest.getFormParameters();
         }
         else {
             requestParams = uriInfo.getQueryParameters(true);
@@ -281,7 +275,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         else {
             event.event(EventType.LOGIN);
             event.error(Errors.INVALID_TOKEN);
-            return ErrorPage.error(session, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null,Messages.INVALID_REQUEST);
         }
     }
 
@@ -291,8 +285,8 @@ public class WSFedService extends AuthorizationEndpointBase {
      * test purposes), and then hand them over to keycloak's AuthorizationEndpointBase's
      * handleBrowserAuthenticationRequest.
      *
-     * @param params in this case the client is the resource (which is also a client to keycloak)
      * @param params the WSFedProtocolParameters obtained from the browser request
+     * @param client in this case the client is the resource (which is a client configured in keycloak)
      * @param redirectToAuthentication if set to true, on login the authentication processor will redirect to the "flow path"
      * @return the response generated by keycloak's AuthorizationEndpointBase handleBrowserAuthenticationRequest, or an error page
      */
@@ -309,32 +303,26 @@ public class WSFedService extends AuthorizationEndpointBase {
         }
         if (redirect == null) {
             event.error(Errors.INVALID_REDIRECT_URI);
-            return ErrorPage.error(session, Messages.INVALID_REDIRECT_URI);
+            return ErrorPage.error(session, null, Messages.INVALID_REDIRECT_URI);
         }
 
-        ClientSessionModel clientSession = session.sessions().createClientSession(realm, client);
-        clientSession.setAuthMethod(WSFedLoginProtocol.LOGIN_PROTOCOL);
-        clientSession.setRedirectUri(redirect);
-        clientSession.setAction(ClientSessionModel.Action.AUTHENTICATE.name());
-        clientSession.setNote(WSFedConstants.WSFED_CONTEXT, params.getWsfed_context());
-        clientSession.setNote(OIDCLoginProtocol.ISSUER, RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
+        //WS-FED doesn't carry connection state at this point, but a freshness of 0 indicates a demand to re-prompt
+        //for authentication (indicating the request is not new), maybe. TODO check logic
+        AuthorizationEndpointChecks checks = getOrCreateAuthenticationSession(client, params.getWsfed_freshness());
+        if (checks.response != null) {
+            return checks.response;
+        }
+        AuthenticationSessionModel authSession = checks.authSession;
 
-        return newBrowserAuthentication(clientSession, false, redirectToAuthentication);
-    }
 
-    /**
-     * This method exists only for debug purposes, as it solely to separate the creation of the loginProtocol creation
-     * from the handlelogin request method (this method will never be called separately
-     *
-     * FIXME remove this method, and set false directly in the handleBrowserAuthenticationRequest isPassive attribute
-     * @param clientSession the model of the session between the resource and keycloak (currently functioning as STS)
-     * @param isPassive true means that client is just checking if the user is already completely logged in. (not supported by WS-Fed)
-     * @param redirectToAuthentication if set to true, on login the authentication processor will redirect to the "flow path"
-     * @return the response from keycloak's handling of the browserAuthorisationRequest
-     */
-    protected Response newBrowserAuthentication(ClientSessionModel clientSession, boolean isPassive, boolean redirectToAuthentication) {
+        authSession.setProtocol(WSFedLoginProtocol.LOGIN_PROTOCOL);
+        authSession.setRedirectUri(redirect);
+        authSession.setAction(AuthenticationSessionModel.Action.AUTHENTICATE.name());
+        authSession.setClientNote(WSFedConstants.WSFED_CONTEXT, params.getWsfed_context());
+        authSession.setClientNote(OIDCLoginProtocol.ISSUER, RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
+
         LoginProtocol wsfedProtocol = new WSFedLoginProtocol().setEventBuilder(event).setHttpHeaders(headers).setRealm(realm).setSession(session).setUriInfo(uriInfo);
-        return handleBrowserAuthenticationRequest(clientSession, wsfedProtocol, isPassive, redirectToAuthentication);
+        return handleBrowserAuthenticationRequest(authSession, wsfedProtocol, false, redirectToAuthentication);
     }
 
     protected Response handleLogoutRequest(WSFedProtocolParameters params, ClientModel client) {
@@ -342,7 +330,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (client == null && params.getWsfed_reply() == null) {
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_REQUEST);
-            return ErrorPage.error(session, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null,Messages.INVALID_REQUEST);
         }
 
         String logoutUrl;
@@ -361,12 +349,9 @@ public class WSFedService extends AuthorizationEndpointBase {
             userSession.setNote(AuthenticationManager.KEYCLOAK_LOGOUT_PROTOCOL, WSFedLoginProtocol.LOGIN_PROTOCOL);
 
             // remove client from logout requests
-            if(client != null) {
-                for (ClientSessionModel clientSession : userSession.getClientSessions()) {
-                    if (clientSession.getClient().getId().equals(client.getId())) {
-                        clientSession.setAction(ClientSessionModel.Action.LOGGED_OUT.name());
-                    }
-                }
+            AuthenticatedClientSessionModel clientSession = userSession.getAuthenticatedClientSessions().get(client.getId());
+            if (clientSession.getClient().getId().equals(client.getId())) {
+                clientSession.setAction(AuthenticationSessionModel.Action.LOGGED_OUT.name());
             }
 
             event.user(userSession.getUser());
@@ -393,7 +378,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             logger.warn("Unknown ws-fed response.");
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_TOKEN);
-            return ErrorPage.error(session, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
         }
 
         // assume this is a logout response
@@ -403,7 +388,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             logger.warn("UserSession is not tagged as logging out.");
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_SAML_LOGOUT_RESPONSE);
-            return ErrorPage.error(session, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
         }
 
         event.user(userSession.getUser());
@@ -424,14 +409,19 @@ public class WSFedService extends AuthorizationEndpointBase {
     }
 
     /**
-     * Checks if the connection is https first, then checks if https is required.
-     * @return true if the connection is https, or if https is not required by the realm
+     * This method checks if the request is a new one. WS doesn't really carry this sort of state, so we return true
+     * except if the freshness was 0.
+     * TODO check if we want/need to keep some server-side data to better support this operation
+     * @param authSession The authorisation model
+     * @param clientFromRequest the client model
+     * @param requestState the content of the wfresh parameter
+     * @return true if we consider this to be a new request
      */
-    private boolean checkSsl() {
-        if (uriInfo.getBaseUri().getScheme().equals("https")) {
-            return true;
-        } else {
-            return !realm.getSslRequired().isRequired(clientConnection);
+    @Override
+    protected boolean isNewRequest(AuthenticationSessionModel authSession, ClientModel clientFromRequest, String requestState) {
+        if ("0".equals(requestState)) {
+            return false;
         }
+        return true;
     }
 }

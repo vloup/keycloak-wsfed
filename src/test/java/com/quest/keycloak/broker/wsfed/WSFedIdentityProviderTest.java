@@ -27,6 +27,7 @@ import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
 import org.keycloak.broker.provider.IdentityProvider;
+import org.keycloak.broker.provider.util.IdentityBrokerState;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.FederatedIdentityModel;
@@ -89,8 +90,8 @@ public class WSFedIdentityProviderTest {
     public void testPerformLogin() throws Exception {
         AuthenticationRequest request = mock(AuthenticationRequest.class);
         doReturn("https://redirectUri").when(request).getRedirectUri();
-        doReturn("context").when(request).getState();
-
+        when(request.getState()).thenReturn(mock(IdentityBrokerState.class));
+        when(request.getState().getEncodedState()).thenReturn("context");
 
         Response response = identityProvider.performLogin(request);
         Document doc = responseToDocument(response);
@@ -99,7 +100,7 @@ public class WSFedIdentityProviderTest {
         assertInputNode(doc, WSFedConstants.WSFED_ACTION, WSFedConstants.WSFED_SIGNIN_ACTION);
         assertInputNode(doc, WSFedConstants.WSFED_REALM, config.getWsFedRealm());
         assertInputNode(doc, WSFedConstants.WSFED_REPLY, request.getRedirectUri());
-        assertInputNode(doc, WSFedConstants.WSFED_CONTEXT, request.getState());
+        assertInputNode(doc, WSFedConstants.WSFED_CONTEXT, request.getState().getEncodedState());
         assertInputNodeMissing(doc, WSFedConstants.WSFED_RESULT);
     }
 
@@ -176,10 +177,5 @@ public class WSFedIdentityProviderTest {
 
         node = assertNode(doc, "/ns:EntityDescriptor/ns:RoleDescriptor/fed:PassiveRequestorEndpoint/wsa:EndpointReference/wsa:Address", nsContext);
         assertEquals(identityProvider.getEndpoint(mockHelper.getUriInfo(), mockHelper.getRealm()), node.getTextContent());
-    }
-
-    @Test
-    public void testAttachUserSession() throws Exception {
-        identityProvider.attachUserSession(mockHelper.getUserSessionModel(), mockHelper.getClientSessionModel(), mock(BrokeredIdentityContext.class));
     }
 }

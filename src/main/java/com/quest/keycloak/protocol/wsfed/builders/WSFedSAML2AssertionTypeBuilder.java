@@ -20,20 +20,13 @@ import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLAttributeStatementMapp
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLRoleListMapper;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.ClientSessionModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.saml.SamlProtocol;
 import org.keycloak.saml.common.constants.GeneralConstants;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
 import org.keycloak.saml.common.exceptions.ProcessingException;
-import org.keycloak.services.resources.RealmsResource;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import java.util.LinkedList;
@@ -87,7 +80,7 @@ public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstra
     protected void populateRoles(SamlProtocol.ProtocolMapperProcessor<WSFedSAMLRoleListMapper> roleListMapper,
                               AssertionType assertion,
                               KeycloakSession session,
-                              UserSessionModel userSession, ClientSessionModel clientSession) {
+                              UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         if (roleListMapper == null) return;
         AttributeStatementType attributeStatement = new AttributeStatementType();
         roleListMapper.mapper.mapRoles(attributeStatement, roleListMapper.model, session, userSession, clientSession);
@@ -101,7 +94,7 @@ public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstra
     public void transformAttributeStatement(List<SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper>> attributeStatementMappers,
                                             AssertionType assertion,
                                             KeycloakSession session,
-                                            UserSessionModel userSession, ClientSessionModel clientSession) {
+                                            UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         AttributeStatementType attributeStatement = new AttributeStatementType();
         for (SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper> processor : attributeStatementMappers) {
             processor.mapper.transformAttributeStatement(attributeStatement, processor.model, session, userSession, clientSession);
@@ -113,7 +106,7 @@ public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstra
         }
     }
 
-    protected String getNameIdFormat(ClientSessionModel clientSession) {
+    protected String getNameIdFormat(AuthenticatedClientSessionModel clientSession) {
         String nameIdFormat = clientSession.getNote(GeneralConstants.NAMEID_FORMAT);
         ClientModel client = clientSession.getClient();
         boolean forceFormat = forceNameIdFormat(client);
@@ -139,7 +132,7 @@ public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstra
         return "true".equals(client.getAttribute(SAML_FORCE_NAME_ID_FORMAT_ATTRIBUTE));
     }
 
-    protected String getNameId(String nameIdFormat, ClientSessionModel clientSession, UserSessionModel userSession) {
+    protected String getNameId(String nameIdFormat, AuthenticatedClientSessionModel clientSession, UserSessionModel userSession) {
         if (nameIdFormat.equals(JBossSAMLURIConstants.NAMEID_FORMAT_EMAIL.get())) {
             return userSession.getUser().getEmail();
         } else if(nameIdFormat.equals(JBossSAMLURIConstants.NAMEID_FORMAT_TRANSIENT.get())) {

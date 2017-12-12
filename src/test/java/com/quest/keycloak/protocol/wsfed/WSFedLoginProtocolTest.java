@@ -71,7 +71,7 @@ public class WSFedLoginProtocolTest {
 
     @Test
     public void testSendErrorCancelled() throws Exception {
-        Response response = loginProtocol.sendError(mockHelper.getClientSessionModel(), LoginProtocol.Error.CANCELLED_BY_USER);
+        Response response = loginProtocol.sendError(mockHelper.getAuthSessionModel(), LoginProtocol.Error.CANCELLED_BY_USER);
         assertNotNull(response);
 
         assertErrorPage(mockHelper.getLoginFormsProvider(), WSFedConstants.WSFED_ERROR_NOTSIGNEDIN);
@@ -79,7 +79,7 @@ public class WSFedLoginProtocolTest {
 
     @Test
     public void testSendErrorOther() throws Exception {
-        Response response = loginProtocol.sendError(mockHelper.getClientSessionModel(), LoginProtocol.Error.PASSIVE_LOGIN_REQUIRED);
+        Response response = loginProtocol.sendError(mockHelper.getAuthSessionModel(), LoginProtocol.Error.PASSIVE_LOGIN_REQUIRED);
         assertNotNull(response);
 
         assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.FAILED_TO_PROCESS_RESPONSE);
@@ -150,7 +150,7 @@ public class WSFedLoginProtocolTest {
         ClientModel client = mockHelper.getClient();
         doReturn("false").when(client).getAttribute(WSFedLoginProtocol.WSFED_JWT);
 
-        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getAccessCode());
+        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getClientSessionModel());
 
         //We already validate token generation through other test classes so this is mainly to ensure the response gets built correctly
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -175,7 +175,7 @@ public class WSFedLoginProtocolTest {
         doReturn("false").when(client).getAttribute(WSFedLoginProtocol.WSFED_JWT);
         doReturn("SAML 1.1").when(client).getAttribute(WSFedLoginProtocol.WSFED_SAML_ASSERTION_TOKEN_FORMAT);
 
-        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getAccessCode());
+        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getClientSessionModel());
 
         //We already validate token generation through other test classes so this is mainly to ensure the response gets built correctly
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -200,7 +200,7 @@ public class WSFedLoginProtocolTest {
         doReturn("true").when(client).getAttribute(WSFedLoginProtocol.WSFED_JWT);
         doReturn("false").when(client).getAttribute(WSFedLoginProtocol.WSFED_X5T);
 
-        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getAccessCode());
+        Response response = loginProtocol.authenticated(mockHelper.getUserSessionModel(), mockHelper.getClientSessionModel());
 
         //We already validate token generation through other test classes so this is mainly to ensure the response gets built correctly
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());

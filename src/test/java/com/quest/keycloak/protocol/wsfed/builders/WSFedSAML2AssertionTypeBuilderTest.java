@@ -24,7 +24,7 @@ import org.junit.Test;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
 import org.keycloak.dom.saml.v2.assertion.AudienceRestrictionType;
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.saml.common.constants.GeneralConstants;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
@@ -94,7 +94,7 @@ public class WSFedSAML2AssertionTypeBuilderTest {
 
         assertEquals(mockHelper.getClientId(), ((AudienceRestrictionType) token.getConditions().getConditions().get(0)).getAudience().get(0).toString());
 
-        ClientSessionModel clientSession = mockHelper.getClientSessionModel();
+        AuthenticatedClientSessionModel clientSession = mockHelper.getClientSessionModel();
         verify(clientSession, times(1)).setNote(WSFedSAML2AssertionTypeBuilder.WSFED_NAME_ID, mockHelper.getEmail());
         verify(clientSession, times(1)).setNote(WSFedSAML2AssertionTypeBuilder.WSFED_NAME_ID_FORMAT, mockHelper.getClientSessionNotes().get(GeneralConstants.NAMEID_FORMAT));
 

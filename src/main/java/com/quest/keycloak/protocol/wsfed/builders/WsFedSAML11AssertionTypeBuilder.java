@@ -26,7 +26,7 @@ import org.keycloak.dom.saml.v1.assertion.SAML11StatementAbstractType;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
 import org.keycloak.dom.saml.v2.assertion.AttributeType;
 import org.keycloak.dom.saml.v2.assertion.EncryptedElementType;
-import org.keycloak.models.ClientSessionModel;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
@@ -129,7 +129,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
     private void populateRoles(SamlProtocol.ProtocolMapperProcessor<WSFedSAMLRoleListMapper> roleListMapper,
                                SAML11AssertionType assertion,
                                KeycloakSession session,
-                               UserSessionModel userSession, ClientSessionModel clientSession) {
+                               UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         if (roleListMapper == null) return;
 
         AttributeStatementType tempAttributeStatement = new AttributeStatementType();
@@ -180,7 +180,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
     private void transformAttributeStatement(List<SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper>> attributeStatementMappers,
                                             SAML11AssertionType assertion,
                                             KeycloakSession session,
-                                            UserSessionModel userSession, ClientSessionModel clientSession) {
+                                            UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         AttributeStatementType tempAttributeStatement = new AttributeStatementType();
         for (SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper> processor : attributeStatementMappers) {
             processor.mapper.transformAttributeStatement(tempAttributeStatement, processor.model, session, userSession, clientSession);
