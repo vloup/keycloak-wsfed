@@ -1,6 +1,6 @@
 # WS-Federation for keycloak
 
-* Currently working on 2.5.5.Final
+* Currently working on 3.4.0.Final
 
 ## Install
 
@@ -14,15 +14,10 @@ install -d -v -m755 /opt/keycloak/modules/system/layers/wsfed -o keycloak -g key
 install -d -v -m755 /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/ -o keycloak -g keycloak
 
 #Install jar
-install -v -m0755 -o keycloak -g keycloak -D target/keycloak-wsfed-2.5.5.Final.jar /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/
+install -v -m0755 -o keycloak -g keycloak -D target/keycloak-wsfed-3.4.0.Final.jar /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/
 
 #Install module file
 install -v -m0755 -o keycloak -g keycloak -D module.xml /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/
-
-#Setup directories for modules not alredy in keycloak (apache commons-lang3)
-install -d -v -m755 /opt/keycloak/modules/system/layers/wsfed/org/apache/commons//lang3/main/ -o keycloak -g keycloak
-
-#Install commons-lang3 to directory (see pom.xml for correct version), and create simple module.xml (see other keycloak modules). Note: this step should probably be replaced by an appropriate maven install in the future.
 
 ```
 

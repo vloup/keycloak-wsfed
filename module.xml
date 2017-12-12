@@ -19,7 +19,6 @@
         <module name="org.jboss.logging"/>
         <module name="javax.ws.rs.api"/>
         <module name="javax.api"/>
-        <module name="org.keycloak.keycloak-common"/>
         <module name="org.apache.httpcomponents"/>
         <module name="org.apache.commons.lang"/>
     </dependencies>
