@@ -58,6 +58,11 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
 
     private static final Logger logger = Logger.getLogger(WsFedSAML11AssertionTypeBuilder.class);
 
+    @Override
+    protected WsFedSAML11AssertionTypeBuilder getThis() {
+        return this;
+    }
+
     private final class SAML11AttributeArrayMapper {
         SAML11AttributeStatementType attributeStatement;
         SAML11AttributeArrayMapper(SAML11AttributeStatementType attributeStatement) {
@@ -205,4 +210,5 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             assertion.add(attributeStatement);
         }
     }
+
 }

@@ -25,7 +25,6 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.resources.RealmsResource;
-import org.keycloak.sessions.AuthenticationSessionModel;
 
 import javax.ws.rs.core.UriInfo;
 
@@ -37,6 +36,7 @@ import javax.ws.rs.core.UriInfo;
 
 public abstract class
 WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBuilder> {
+
     public static final String WSFED_NAME_ID = "WSFED_NAME_ID";
     public static final String WSFED_NAME_ID_FORMAT = "WSFED_NAME_ID_FORMAT";
     public static final String SAML_NAME_ID_FORMAT_ATTRIBUTE = "saml_name_id_format";
@@ -46,10 +46,12 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     protected UserSessionModel userSession;
     protected AuthenticatedClientSessionModel clientSession;
-    protected ClientSessionCode accessCode;
+    protected ClientSessionCode<?> accessCode;
     protected RealmModel realm;
     protected KeycloakSession session;
     protected UriInfo uriInfo;
+
+    protected abstract T getThis();
 
     public UserSessionModel getUserSession() {
         return userSession;
@@ -57,7 +59,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setUserSession(UserSessionModel userSession) {
         this.userSession = userSession;
-        return (T)this;
+        return getThis();
     }
 
     public AuthenticatedClientSessionModel getClientSession() {
@@ -66,7 +68,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setClientSession(AuthenticatedClientSessionModel clientSession) {
         this.clientSession = clientSession;
-        return (T)this;
+        return getThis();
     }
 
     public ClientSessionCode getAccessCode() {
@@ -75,7 +77,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setAccessCode(ClientSessionCode accessCode) {
         this.accessCode = accessCode;
-        return (T)this;
+        return getThis();
     }
 
     public RealmModel getRealm() {
@@ -84,7 +86,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setRealm(RealmModel realm) {
         this.realm = realm;
-        return (T)this;
+        return getThis();
     }
 
     public KeycloakSession getSession() {
@@ -93,7 +95,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setSession(KeycloakSession session) {
         this.session = session;
-        return (T)this;
+        return getThis();
     }
 
     public UriInfo getUriInfo() {
@@ -102,7 +104,7 @@ WsFedSAMLAssertionTypeAbstractBuilder<T extends WsFedSAMLAssertionTypeAbstractBu
 
     public T setUriInfo(UriInfo uriInfo) {
         this.uriInfo = uriInfo;
-        return (T)this;
+        return getThis();
     }
 
     protected String getResponseIssuer(RealmModel realm) {

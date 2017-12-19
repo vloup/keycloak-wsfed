@@ -61,7 +61,7 @@ public class WSFedValidatorTest {
         MockitoAnnotations.initMocks(this);
 
         when(loginFormsProvider.setError(anyString())).thenReturn(loginFormsProvider);
-        when(loginFormsProvider.createErrorPage()).thenReturn(errorResponse);
+        when(loginFormsProvider.createErrorPage(any(Response.Status.class))).thenReturn(errorResponse);
         when(mockSession.getProvider(LoginFormsProvider.class)).thenReturn(loginFormsProvider);
         when(mockSession.getProvider(LoginFormsProvider.class).setAuthenticationSession(any())).thenReturn(loginFormsProvider);
     }

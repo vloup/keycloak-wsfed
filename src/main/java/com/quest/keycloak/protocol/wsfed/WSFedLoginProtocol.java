@@ -147,10 +147,10 @@ public class WSFedLoginProtocol implements LoginProtocol {
     public Response sendError(AuthenticationSessionModel authSession, Error error) {
         //Replaced cancelLogin
         if(error == Error.CANCELLED_BY_USER) {
-            return ErrorPage.error(session, authSession, WSFedConstants.WSFED_ERROR_NOTSIGNEDIN);
+            return ErrorPage.error(session, authSession, Response.Status.BAD_REQUEST, WSFedConstants.WSFED_ERROR_NOTSIGNEDIN);
         }
 
-        return ErrorPage.error(session, authSession, Messages.FAILED_TO_PROCESS_RESPONSE);
+        return ErrorPage.error(session, authSession, Response.Status.BAD_REQUEST, Messages.FAILED_TO_PROCESS_RESPONSE);
     }
 
     /**
@@ -216,7 +216,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
             return builder.buildResponse();
         } catch (Exception e) {
             logger.error("failed", e);
-            return ErrorPage.error(session, null, Messages.FAILED_TO_PROCESS_RESPONSE);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.FAILED_TO_PROCESS_RESPONSE);
         }
     }
 
@@ -325,7 +325,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
-            return ErrorPage.error(session, null, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
         }
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();
@@ -343,7 +343,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         String logoutUrl = userSession.getNote(WSFED_LOGOUT_BINDING_URI);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
-            return ErrorPage.error(session, null, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
         }
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();

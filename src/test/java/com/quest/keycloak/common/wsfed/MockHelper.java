@@ -46,6 +46,7 @@ import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.AuthenticationSessionProvider;
+import org.keycloak.sessions.RootAuthenticationSessionModel;
 import org.keycloak.sessions.StickySessionEncoderProvider;
 import org.keycloak.storage.UserStorageManager;
 import org.mockito.Mock;
@@ -216,7 +217,7 @@ public class MockHelper {
 
     protected void initializeLoginFormsProviderMock() {
         when(getLoginFormsProvider().setError(anyString())).thenReturn(getLoginFormsProvider());
-        when(getLoginFormsProvider().createErrorPage()).thenReturn(mock(Response.class));
+        when(getLoginFormsProvider().createErrorPage(Response.Status.BAD_REQUEST)).thenReturn(mock(Response.class));
     }
 
     protected void initializeKeycloakSessionMock() {
@@ -232,7 +233,11 @@ public class MockHelper {
         when(getSession().sessions().getUserSessionByBrokerUserId(realm, getUser().getId())).thenReturn(Arrays.asList(userSessionModel));
 
         AuthenticationSessionProvider authProvider = mock(AuthenticationSessionProvider.class);
-        when(authProvider.createAuthenticationSession(getRealm(), getClient())).thenReturn(getAuthSessionModel());
+        RootAuthenticationSessionModel rootAuthenticationSessionModel = mock(RootAuthenticationSessionModel.class);
+        when(rootAuthenticationSessionModel.getId()).thenReturn(UUID.randomUUID().toString());
+        when(rootAuthenticationSessionModel.createAuthenticationSession(client)).thenReturn(authSession);
+        when(authSession.getParentSession()).thenReturn(rootAuthenticationSessionModel);
+        when(authProvider.createRootAuthenticationSession(realm)).thenReturn(rootAuthenticationSessionModel);
         when(getSession().authenticationSessions()).thenReturn(authProvider);
 
         KeycloakContext context = mock(KeycloakContext.class);

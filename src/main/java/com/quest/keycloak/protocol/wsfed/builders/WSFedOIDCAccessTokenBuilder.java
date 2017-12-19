@@ -37,7 +37,7 @@ public class WSFedOIDCAccessTokenBuilder {
     private KeycloakSession session;
     private UserSessionModel userSession;
     private AuthenticatedClientSessionModel clientSession;
-    private ClientSessionCode accessCode;
+    private ClientSessionCode<?> accessCode;
     private RealmModel realm;
     private ClientModel client;
     private boolean x5tIncluded;
@@ -100,7 +100,7 @@ public class WSFedOIDCAccessTokenBuilder {
         TokenManager tokenManager = new TokenManager();
         UserModel user = session.users().getUserById(userSession.getUser().getId(), realm);
         AccessToken accessToken = tokenManager.createClientAccessToken(session, accessCode.getRequestedRoles(), realm, client, user, userSession, clientSession);
-        accessToken = transformAccessToken(session, accessToken, realm, client, user, userSession, clientSession);
+        accessToken = transformAccessToken(session, accessToken, realm, userSession, clientSession);
         return encodeToken(realm, accessToken);
     }
 
@@ -176,9 +176,9 @@ public class WSFedOIDCAccessTokenBuilder {
         }
     }
 
-    public AccessToken transformAccessToken(KeycloakSession session, AccessToken token, RealmModel realm, ClientModel client, UserModel user,
+    public AccessToken transformAccessToken(KeycloakSession session, AccessToken token, RealmModel realm,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
-        Set<ProtocolMapperModel> mappings = new ClientSessionCode(session, realm, clientSession).getRequestedProtocolMappers();
+        Set<ProtocolMapperModel> mappings = new ClientSessionCode<>(session, realm, clientSession).getRequestedProtocolMappers();
         KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
         for (ProtocolMapperModel mapping : mappings) {
 
