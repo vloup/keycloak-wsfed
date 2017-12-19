@@ -86,7 +86,7 @@ public class SAML2RequestedToken implements RequestedToken {
             if(!AssertionUtil.isSignatureValid(extractSamlDocument(doc).getDocumentElement(), key)) {
                 event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
                 event.error(Errors.INVALID_SIGNATURE);
-                return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
             }
 
             XMLGregorianCalendar notBefore = saml2Assertion.getConditions().getNotBefore();
@@ -96,20 +96,20 @@ public class SAML2RequestedToken implements RequestedToken {
             if(AssertionUtil.hasExpired(saml2Assertion)) {
                 event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
                 event.error(Errors.EXPIRED_CODE);
-                return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
             }
 
             if(!isValidAudienceRestriction(URI.create(config.getWsFedRealm()))) {
                 event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
                 event.error(Errors.INVALID_SAML_RESPONSE);
-                return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
             }
 
         } catch (Exception e) {
             logger.error("Unable to validate signature", e);
             event.event(EventType.IDENTITY_PROVIDER_RESPONSE);
             event.error(Errors.INVALID_SAML_RESPONSE);
-            return ErrorPage.error(session, null, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_FEDERATED_IDENTITY_ACTION);
         }
 
         return null;

@@ -588,7 +588,7 @@ public class WSFedServiceTest {
         ResteasyProviderFactory.pushContext(HttpResponse.class, response);
 
         AuthenticationSessionModel authSession = mock(AuthenticationSessionModel.class);
-        when(authSession.getId()).thenReturn(UUID.randomUUID().toString());
+        //when(authSession.getId()).thenReturn(UUID.randomUUID().toString());
         //when(clientSession.getNote(ClientSessionModel.ACTION_KEY)).thenReturn(KeycloakModelUtils.generateCodeSecret()); //This is normally set in method but because we are mocked we need to return it
         when(authSession.getClient()).thenReturn(mockHelper.getClient());
 

@@ -35,7 +35,6 @@ import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedProtocolParameters;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.PemUtils;
-import org.keycloak.common.util.StreamUtil;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
@@ -157,7 +156,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (params.getWsfed_action() == null) {
             event.event(EventType.LOGIN);
             event.error(Errors.INVALID_REQUEST);
-            return ErrorPage.error(session,null, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session,null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
         }
 
         if (params.getWsfed_realm() == null) {
@@ -172,7 +171,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             else { //If it's not a signout event than wtrealm is required
                 event.event(EventType.LOGIN);
                 event.error(Errors.INVALID_CLIENT);
-                return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
+                return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
             }
         }
 
@@ -205,18 +204,18 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (client == null) {
             event.event(EventType.LOGIN);
             event.error(Errors.CLIENT_NOT_FOUND);
-            return ErrorPage.error(session, null,Messages.UNKNOWN_LOGIN_REQUESTER);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.UNKNOWN_LOGIN_REQUESTER);
         }
 
         if (!client.isEnabled()) {
             event.event(EventType.LOGIN);
             event.error(Errors.CLIENT_DISABLED);
-            return ErrorPage.error(session, null ,Messages.LOGIN_REQUESTER_NOT_ENABLED);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.LOGIN_REQUESTER_NOT_ENABLED);
         }
         if ((client instanceof ClientModel) && client.isBearerOnly()) {
             event.event(EventType.LOGIN);
             event.error(Errors.NOT_ALLOWED);
-            return ErrorPage.error(session, null,Messages.BEARER_ONLY);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.BEARER_ONLY);
         }
 
         session.getContext().setClient(client);
@@ -275,7 +274,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         else {
             event.event(EventType.LOGIN);
             event.error(Errors.INVALID_TOKEN);
-            return ErrorPage.error(session, null,Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
         }
     }
 
@@ -303,7 +302,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         }
         if (redirect == null) {
             event.error(Errors.INVALID_REDIRECT_URI);
-            return ErrorPage.error(session, null, Messages.INVALID_REDIRECT_URI);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REDIRECT_URI);
         }
 
         //WS-FED doesn't carry connection state at this point, but a freshness of 0 indicates a demand to re-prompt
@@ -330,7 +329,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         if (client == null && params.getWsfed_reply() == null) {
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_REQUEST);
-            return ErrorPage.error(session, null,Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
         }
 
         String logoutUrl;
@@ -378,7 +377,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             logger.warn("Unknown ws-fed response.");
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_TOKEN);
-            return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
         }
 
         // assume this is a logout response
@@ -388,7 +387,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             logger.warn("UserSession is not tagged as logging out.");
             event.event(EventType.LOGOUT);
             event.error(Errors.INVALID_SAML_LOGOUT_RESPONSE);
-            return ErrorPage.error(session, null, Messages.INVALID_REQUEST);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REQUEST);
         }
 
         event.user(userSession.getUser());

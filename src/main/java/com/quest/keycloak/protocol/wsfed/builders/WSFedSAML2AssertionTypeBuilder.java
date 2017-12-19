@@ -155,4 +155,9 @@ public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstra
             return userSession.getUser().getUsername();
         }
     }
+
+    @Override
+    protected WSFedSAML2AssertionTypeBuilder getThis() {
+        return this;
+    }
 }

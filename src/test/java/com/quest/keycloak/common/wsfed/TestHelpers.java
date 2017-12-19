@@ -153,7 +153,7 @@ public class TestHelpers {
     public static void assertErrorPage(LoginFormsProvider loginFormsProvider, String message) {
         verify(loginFormsProvider, times(1)).setAuthenticationSession(any());
         verify(loginFormsProvider, times(1)).setError(eq(message));
-        verify(loginFormsProvider, times(1)).createErrorPage();
+        verify(loginFormsProvider, times(1)).createErrorPage(Response.Status.BAD_REQUEST);
     }
 
     public static Document responseToDocument(Response response) throws Exception {

@@ -16,8 +16,11 @@
 
 package com.quest.keycloak.broker.wsfed;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URLEncoder;
+import java.util.stream.Collectors;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
@@ -132,20 +135,16 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
 
     @Override
     public Response export(UriInfo uriInfo, RealmModel realm, String format) {
-        try {
+        try (InputStream is = getClass().getResourceAsStream("/wsfed-sp-metadata-template.xml"); BufferedReader br = new BufferedReader(new InputStreamReader(is))){
             KeyManager keyManager = session.keys();
-            InputStream is = getClass().getResourceAsStream("/wsfed-sp-metadata-template.xml");
-
-            String template = StreamUtil.readString(is);
+            String template = br.lines().collect(Collectors.joining("\n"));
             template = template.replace("${idp.entityID}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
             template = template.replace("${idp.display.name}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
             template = template.replace("${idp.sso.sp}", getEndpoint(uriInfo, realm));
             template = template.replace("${idp.sso.passive}", getEndpoint(uriInfo, realm));
             template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(keyManager.getActiveRsaKey(realm).getCertificate()));
-
             return Response.ok(template, MediaType.APPLICATION_XML_TYPE).build();
-        }
-        catch(Exception ex) {
+        } catch(Exception ex) {
             throw new IdentityBrokerException("Could not generate SP metadata", ex);
         }
     }
