@@ -1,6 +1,6 @@
 # WS-Federation for keycloak
 
-* Currently working on 3.4.1.Final
+* Currently working on 3.4.1.Final (check tags for compatibility with previous keycloak versions)
 
 ## Install
 
