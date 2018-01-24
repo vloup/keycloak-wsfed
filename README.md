@@ -1,6 +1,6 @@
 # WS-Federation for keycloak
 
-* Currently working on 3.4.1.Final (check tags for compatibility with previous keycloak versions)
+* Currently working on 3.4.3.Final (check tags for compatibility with previous keycloak versions)
 
 ## Install
 
@@ -14,7 +14,7 @@ install -d -v -m755 /opt/keycloak/modules/system/layers/wsfed -o keycloak -g key
 install -d -v -m755 /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/ -o keycloak -g keycloak
 
 #Install jar
-install -v -m0755 -o keycloak -g keycloak -D target/keycloak-wsfed-3.4.1.Final.jar /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/
+install -v -m0755 -o keycloak -g keycloak -D target/keycloak-wsfed-3.4.3.Final.jar /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/
 
 #Install module file
 install -v -m0755 -o keycloak -g keycloak -D module.xml /opt/keycloak/modules/system/layers/wsfed/com/quest/keycloak-wsfed/main/

@@ -307,12 +307,8 @@ public class WSFedService extends AuthorizationEndpointBase {
 
         //WS-FED doesn't carry connection state at this point, but a freshness of 0 indicates a demand to re-prompt
         //for authentication (indicating the request is not new), maybe. TODO check logic
-        AuthorizationEndpointChecks checks = getOrCreateAuthenticationSession(client, params.getWsfed_freshness());
-        if (checks.response != null) {
-            return checks.response;
-        }
-        AuthenticationSessionModel authSession = checks.authSession;
-
+        //However, requestState isn't actually used any more :-/
+        AuthenticationSessionModel authSession = createAuthenticationSession(client, params.getWsfed_freshness());
 
         authSession.setProtocol(WSFedLoginProtocol.LOGIN_PROTOCOL);
         authSession.setRedirectUri(redirect);
@@ -405,22 +401,5 @@ public class WSFedService extends AuthorizationEndpointBase {
      */
     protected AuthenticationManager.AuthResult authenticateIdentityCookie() {
         return authManager.authenticateIdentityCookie(session, realm, false);
-    }
-
-    /**
-     * This method checks if the request is a new one. WS doesn't really carry this sort of state, so we return true
-     * except if the freshness was 0.
-     * TODO check if we want/need to keep some server-side data to better support this operation
-     * @param authSession The authorisation model
-     * @param clientFromRequest the client model
-     * @param requestState the content of the wfresh parameter
-     * @return true if we consider this to be a new request
-     */
-    @Override
-    protected boolean isNewRequest(AuthenticationSessionModel authSession, ClientModel clientFromRequest, String requestState) {
-        if ("0".equals(requestState)) {
-            return false;
-        }
-        return true;
     }
 }
