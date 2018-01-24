@@ -63,7 +63,7 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
             String destinationUrl = getConfig().getSingleSignOnServiceUrl();
             String reply = request.getRedirectUri();
             String wsFedRealm = getConfig().getWsFedRealm();
-            String context = request.getState().getEncodedState();
+            String context = request.getState().getEncoded();
             // not sure how valuable this null-check is in real life, but it breaks in the tests without it.
             if( request.getHttpRequest() != null && request.getHttpRequest().getUri() != null ) {
                 MultivaluedMap<String, String> params = request.getHttpRequest().getUri().getQueryParameters();

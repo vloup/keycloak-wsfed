@@ -91,8 +91,7 @@ public class WSFedIdentityProviderTest {
         AuthenticationRequest request = mock(AuthenticationRequest.class);
         doReturn("https://redirectUri").when(request).getRedirectUri();
         when(request.getState()).thenReturn(mock(IdentityBrokerState.class));
-        when(request.getState().getEncodedState()).thenReturn("context");
-
+        when(request.getState().getEncoded()).thenReturn("context");
         Response response = identityProvider.performLogin(request);
         Document doc = responseToDocument(response);
 
@@ -100,7 +99,7 @@ public class WSFedIdentityProviderTest {
         assertInputNode(doc, WSFedConstants.WSFED_ACTION, WSFedConstants.WSFED_SIGNIN_ACTION);
         assertInputNode(doc, WSFedConstants.WSFED_REALM, config.getWsFedRealm());
         assertInputNode(doc, WSFedConstants.WSFED_REPLY, request.getRedirectUri());
-        assertInputNode(doc, WSFedConstants.WSFED_CONTEXT, request.getState().getEncodedState());
+        assertInputNode(doc, WSFedConstants.WSFED_CONTEXT, request.getState().getEncoded());
         assertInputNodeMissing(doc, WSFedConstants.WSFED_RESULT);
     }
 

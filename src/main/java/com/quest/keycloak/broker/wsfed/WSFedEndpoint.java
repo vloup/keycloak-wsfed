@@ -245,8 +245,8 @@ public class WSFedEndpoint {
                     Map<String, String> map = getContextParameters(decodedContext);
                     String redirectUri = URLDecoder.decode(map.get("redirectUri"), StandardCharsets.UTF_8.name());
                     if (decodedContext.contains("&code=")) {
-                        //TODO not sure that we indeed have a AuthenticationSessionModel here. It could potentially be a AuthenticatedClientSessionModel
-                        ClientSessionCode.ParseResult<AuthenticationSessionModel> clientCode = ClientSessionCode.parseResult(map.get("code"), this.session, this.session.getContext().getRealm(), this.session.getContext().getClient(), event, AuthenticationSessionModel.class);
+                        //TODO not sure that we indeed have a AuthenticationSessionModel here. It could potentially be a AuthenticatedClientSessionModel. ALSO tabID set to null, but likely broken
+                        ClientSessionCode.ParseResult<AuthenticationSessionModel> clientCode = ClientSessionCode.parseResult(map.get("code"), null, this.session, this.session.getContext().getRealm(), this.session.getContext().getClient(), event, AuthenticationSessionModel.class);
                         if (clientCode != null && clientCode.getCode().isValid(CommonClientSessionModel.Action.AUTHENTICATE.name(), ClientSessionCode.ActionType.LOGIN)) {
                             String ACTIVE_CODE = "active_code"; // duplicating because ClientSessionCode.ACTIVE_CODE is private
                             // restore ACTIVE_CODE note because it must have been removed by parse() if code==activeCode

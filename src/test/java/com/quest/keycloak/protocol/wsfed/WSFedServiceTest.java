@@ -558,7 +558,9 @@ public class WSFedServiceTest {
         Response response = service.handleLoginRequest(params, mockHelper.getClient(), false);
         assertNotNull(response);
 
-        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.EXPIRED_CODE);
+        verify(mockHelper.getLoginFormsProvider(), times(2)).setAuthenticationSession(any());
+        verify(mockHelper.getLoginFormsProvider(), times(1)).setError(eq(Messages.EXPIRED_CODE));
+        verify(mockHelper.getLoginFormsProvider(), times(1)).createErrorPage(Response.Status.BAD_REQUEST);
 
         verify(mockHelper.getAuthSessionModel(), times(1)).setProtocol(eq(WSFedLoginProtocol.LOGIN_PROTOCOL));
         verify(mockHelper.getAuthSessionModel(), times(1)).setRedirectUri(eq(params.getWsfed_reply()));
