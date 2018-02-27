@@ -36,7 +36,6 @@ import org.keycloak.models.*;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.services.messages.Messages;
@@ -221,7 +220,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
     }
 
     private SAML11AssertionType buildSAML11AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, AuthenticatedClientSessionModel clientSession)
-            throws DatatypeConfigurationException, ConfigurationException, ProcessingException {
+            throws ConfigurationException {
         WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
         samlBuilder.setRealm(realm)
                 .setUriInfo(uriInfo)
@@ -233,7 +232,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
     }
 
     private AssertionType buildSAML20AssertionToken(UserSessionModel userSession, ClientSessionCode accessCode, AuthenticatedClientSessionModel clientSession)
-            throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+            throws DatatypeConfigurationException {
         WSFedSAML2AssertionTypeBuilder samlBuilder = new WSFedSAML2AssertionTypeBuilder();
         samlBuilder.setRealm(realm)
                 .setUriInfo(uriInfo)

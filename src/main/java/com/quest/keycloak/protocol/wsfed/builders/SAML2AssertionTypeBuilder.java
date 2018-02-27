@@ -24,8 +24,6 @@ import org.keycloak.dom.saml.v2.assertion.NameIDType;
 import org.keycloak.dom.saml.v2.assertion.SubjectConfirmationDataType;
 import org.keycloak.dom.saml.v2.assertion.SubjectConfirmationType;
 import org.keycloak.dom.saml.v2.assertion.SubjectType;
-import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.processing.core.saml.v2.common.IDGenerator;
 import org.keycloak.saml.processing.core.saml.v2.util.AssertionUtil;
 import org.keycloak.saml.processing.core.saml.v2.util.XMLTimeUtil;
@@ -92,7 +90,7 @@ public class SAML2AssertionTypeBuilder {
         return this;
     }
 
-    public AssertionType buildModel() throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+    public AssertionType buildModel() throws DatatypeConfigurationException {
         String id = IDGenerator.create("ID_");
         AssertionType assertion = AssertionUtil.createAssertion(id, getNameIDType(issuer, null));
 

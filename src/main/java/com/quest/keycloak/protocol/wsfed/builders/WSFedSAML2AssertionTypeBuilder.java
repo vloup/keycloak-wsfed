@@ -25,8 +25,6 @@ import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.saml.SamlProtocol;
 import org.keycloak.saml.common.constants.GeneralConstants;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
-import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 
 import javax.xml.datatype.DatatypeConfigurationException;
 import java.util.LinkedList;
@@ -36,7 +34,7 @@ import java.util.UUID;
 
 public class WSFedSAML2AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstractBuilder<WSFedSAML2AssertionTypeBuilder> {
 
-    public AssertionType build() throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+    public AssertionType build() throws DatatypeConfigurationException {
         String responseIssuer = getResponseIssuer(realm);
         String nameIdFormat = getNameIdFormat(clientSession);
         String nameId = getNameId(nameIdFormat, clientSession, userSession);

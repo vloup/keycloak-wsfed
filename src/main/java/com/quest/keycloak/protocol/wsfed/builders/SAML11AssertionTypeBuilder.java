@@ -20,10 +20,8 @@ package com.quest.keycloak.protocol.wsfed.builders;
 
 import org.jboss.logging.Logger;
 import org.keycloak.dom.saml.v1.assertion.*;
-import org.keycloak.dom.saml.v2.assertion.ConditionsType;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.common.exceptions.fed.IssueInstantMissingException;
 import org.keycloak.saml.processing.core.saml.v2.common.IDGenerator;
 import org.keycloak.saml.processing.core.saml.v2.util.AssertionUtil;
@@ -104,7 +102,7 @@ public class SAML11AssertionTypeBuilder {
         return subject;
     }
 
-    public SAML11AssertionType buildModel() throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+    public SAML11AssertionType buildModel() throws ConfigurationException {
         String id = IDGenerator.create("ID_");
 
         XMLGregorianCalendar issuerInstant = XMLTimeUtil.getIssueInstant();

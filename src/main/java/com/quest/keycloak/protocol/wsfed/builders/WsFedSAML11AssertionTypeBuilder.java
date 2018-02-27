@@ -36,9 +36,7 @@ import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLAttributeStatementMapp
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLRoleListMapper;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.common.exceptions.ProcessingException;
 
-import javax.xml.datatype.DatatypeConfigurationException;
 import java.net.URI;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,7 +88,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         }
     }
 
-    public SAML11AssertionType build() throws ConfigurationException, ProcessingException, DatatypeConfigurationException {
+    public SAML11AssertionType build() throws ConfigurationException {
         String responseIssuer = getResponseIssuer(realm);
         String nameIdFormat = JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get();
 //        String nameId = getNameId(nameIdFormat, clientSession, userSession);
