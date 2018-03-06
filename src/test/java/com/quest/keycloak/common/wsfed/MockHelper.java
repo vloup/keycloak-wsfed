@@ -123,6 +123,7 @@ public class MockHelper {
         initializeAuthSessionModelMock();
         initializeClientSessionCodeMock();
         initializeUserSessionModelMock();
+        protocolMappers = new HashMap<>();
         return this;
     }
 
@@ -191,20 +192,10 @@ public class MockHelper {
             when(getClient().getAttribute(entry.getKey())).thenReturn(entry.getValue());
         }
 
-        when(getClient().getProtocolMapperById(anyString())).thenAnswer(new Answer<ProtocolMapperModel>() {
-            @Override
-            public ProtocolMapperModel answer(InvocationOnMock invocation) throws Throwable {
-                String id = (String) invocation.getArguments()[0];
-
-                for (ProtocolMapperModel mm : getProtocolMappers().keySet()) {
-                    if (mm.getId().equals(id)) {
-                        return mm;
-                    }
-                }
-
-                return null;
-            }
-        });
+        when(getClient().getProtocolMapperById(anyString())).thenReturn(null);
+        for (ProtocolMapperModel mapperModel : protocolMappers.keySet()) {
+            when(getClient().getProtocolMapperById(mapperModel.getId())).thenReturn(mapperModel);
+        }
 
         when(realm.getClientByClientId(getClientId())).thenReturn(getClient());
     }
@@ -213,6 +204,22 @@ public class MockHelper {
         when(getUser().getId()).thenReturn(UUID.randomUUID().toString());
         when(getUser().getUsername()).thenReturn(getUserName());
         when(getUser().getEmail()).thenReturn(getEmail());
+
+        Set<GroupModel> userGroups = new HashSet<>();
+        GroupModel group1 = mock(GroupModel.class);
+        GroupModel group2 = mock(GroupModel.class);
+        GroupModel group3 = mock(GroupModel.class);
+        userGroups.addAll(Arrays.asList(group1, group2, group3));
+        when(group1.getName()).thenReturn("group1");
+        when(group2.getName()).thenReturn("group2");
+        when(group3.getName()).thenReturn("group3");
+
+        when(user.getGroups()).thenReturn(userGroups);
+        when(user.isMemberOf(any())).thenReturn(false);
+        when(user.isMemberOf(group1)).thenReturn(true);
+        when(user.isMemberOf(group2)).thenReturn(true);
+        when(user.isMemberOf(group3)).thenReturn(true);
+
     }
 
     protected void initializeLoginFormsProviderMock() {

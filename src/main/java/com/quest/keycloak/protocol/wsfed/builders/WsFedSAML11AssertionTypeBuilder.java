@@ -44,6 +44,11 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
+ * This class handles the creation of a complete SAML 1.1 assertion. By default, all previous processing is done in keycloak's
+ * SAML 2.0 classes, an therefore the translation to SAML 1.1 structures is done in this class. However, the SAML
+ * 1.1 classes are already a part of keycloak, so all this class needs to do is the translation from one set of
+ * classes to another.
+ *
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
  * @version $Revision: 1 $
  * @since 10/4/2016
@@ -137,7 +142,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
 
         AttributeStatementType tempAttributeStatement = new AttributeStatementType();
 
-        // TODO should there be different mappers to support SAML1.0 and SAML2.0 formats?
+        // TODO should there be different mappers to support SAML1.0 and SAML2.0 formats? --> only if SAML 2.0 mapper explicitly doesn't support values removed in SAML2.0
         // For instance, SAML1.0 may need "AttributeNamespace" explicitly specified,
         // wherease SAML2.0 needs a format specifier which does not map to anything in SAML1.0. Or does it?
         roleListMapper.mapper.mapRoles(tempAttributeStatement, roleListMapper.model, session, userSession, clientSession);
@@ -146,12 +151,14 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
 
         SAML11AttributeArrayMapper samlAttributeMapper = new SAML11AttributeArrayMapper(attributeStatement);
         samlAttributeMapper.mapAttributes(tempAttributeStatement, attribute -> {
-            // TODO what is there to do with SAML2 attribute name format?
+            // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
 
             // Change the role attribute name to lowercase, i.e. "Role" becomes "role"
             SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(ATTRIBUTE_NAMESPACE));
             if (!attribute.getAttributeValue().isEmpty()) {
-                samlAttribute.add(attribute.getAttributeValue().get(0).toString());
+                for (Object attributeValue : attribute.getAttributeValue()) {
+                    samlAttribute.add(attributeValue.toString());
+                }
             } else {
                 logger.warnf("The attribute '%s' does not have a value", attribute.getName());
             }
@@ -163,6 +170,12 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         }
     }
 
+    /**
+     * Retrieves the SAML11AttributeStatementType from the passed assertion, or returns a new one if
+     * none exists. Note: does NOT attach the newly created attribute statement to the the assertion
+     * @param assertion a SAML11 Assertion (an SAML 1.1 assertion is in fact the token)
+     * @return a SAML 1.1. Attribute statement type
+     */
     private SAML11AttributeStatementType getAttributeStatement(SAML11AssertionType assertion) {
         SAML11AttributeStatementType attributeStatement = null;
         List<SAML11StatementAbstractType> statements = assertion.getStatements();
@@ -180,24 +193,38 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         return attributeStatement;
     }
 
+    /**
+     * This method adds attributes to the passed SAML assertion. The values to append are taken from the state of the
+     * sessions (keycloak session, user session and client session), and processed via the mappers to get the
+     * actual attributes to add to the assertion.
+     * This method will then take the values from the resulting SAML 2.0 classes and set them in SAML 1.1 classes.
+     *
+     * @param attributeStatementMappers The list of SAML attribute statement mappers to consider for this transformation.
+     * @param assertion The SAML 1.1 assertion to build
+     * @param session The current keycloak session
+     * @param userSession The current user session
+     * @param clientSession The current client session
+     */
     private void transformAttributeStatement(List<SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper>> attributeStatementMappers,
                                             SAML11AssertionType assertion,
                                             KeycloakSession session,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
+        //This group is still SAML 2.0
         AttributeStatementType tempAttributeStatement = new AttributeStatementType();
         for (SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper> processor : attributeStatementMappers) {
             processor.mapper.transformAttributeStatement(tempAttributeStatement, processor.model, session, userSession, clientSession);
         }
-
+        //From here we transform to SAML 1.1
         SAML11AttributeStatementType attributeStatement = getAttributeStatement(assertion);
 
         SAML11AttributeArrayMapper samlAttributeMapper = new SAML11AttributeArrayMapper(attributeStatement);
         samlAttributeMapper.mapAttributes(tempAttributeStatement, attribute -> {
-            // TODO what is there to do with SAML2 attribute name format?
-            String friendlyName = attribute.getFriendlyName() != null ? attribute.getFriendlyName() : attribute.getName();
-            SAML11AttributeType samlAttribute = new SAML11AttributeType(friendlyName, URI.create(ATTRIBUTE_NAMESPACE));
+            // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
+            SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(ATTRIBUTE_NAMESPACE));
             if (!attribute.getAttributeValue().isEmpty()) {
-                samlAttribute.add(attribute.getAttributeValue().get(0).toString());
+                for (Object attributeValue : attribute.getAttributeValue()) {
+                    samlAttribute.add(attributeValue.toString());
+                }
             } else {
                 logger.warnf("The attribute '%s' does not have a value", attribute.getName());
             }

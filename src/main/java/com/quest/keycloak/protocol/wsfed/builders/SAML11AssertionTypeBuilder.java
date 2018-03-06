@@ -34,6 +34,9 @@ import java.net.URI;
 import java.util.GregorianCalendar;
 
 /**
+ * The purpose of this class is to create an inital SAML 1.1 assertion (essentially, a saml 1.1 token).
+ * This assertion can then serve as the basis to create a complete SAML 1.1 assertion
+ *
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
  * @version $Revision: 1 $
  * @date 10/4/2016
@@ -102,6 +105,11 @@ public class SAML11AssertionTypeBuilder {
         return subject;
     }
 
+    /**
+     * Creates a bare-bones SAML 1.1 assertion.
+     * @return the SAML 1.1 assertion
+     * @throws ConfigurationException
+     */
     public SAML11AssertionType buildModel() throws ConfigurationException {
         String id = IDGenerator.create("ID_");
 
