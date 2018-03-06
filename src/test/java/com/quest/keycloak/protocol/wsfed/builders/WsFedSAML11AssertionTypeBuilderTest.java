@@ -53,13 +53,12 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.any;
 
 /**
+ * This class tests the generation of WSFed 1.1 Tokens. It also serves to test the generation of attributes through
+ * the mappers.
+ *
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
  * @version $Revision: 1 $
  * @date 10/8/2016
- */
-
-/**
- * This class tests the generation of WSFed 1.1 Tokens.
  */
 public class WsFedSAML11AssertionTypeBuilderTest {
 
@@ -258,5 +257,81 @@ public class WsFedSAML11AssertionTypeBuilderTest {
         assertTrue(attributeValues.contains("group1"));
         assertTrue(attributeValues.contains("group2"));
         assertTrue(attributeValues.contains("group3"));
+    }
+
+
+    @Test
+    public void testSAMLTokenGenerationRoleMappingJoined() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLRoleListMapper roleMapper = new SAMLRoleListMapper();
+
+        ProtocolMapperModel attributeRoles = SAMLRoleListMapper.create("Role mapper joined","Role", "basic", null, true);
+        attributeRoles.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeRoles, roleMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(1, attributesStatements.get().size());
+        SAML11AttributeType attribute = attributesStatements.get().get(0);
+        assertEquals("role", attribute.getAttributeName());
+
+        List<?> attributeValues = attribute.get();
+        assertTrue(attributeValues.contains("role1"));
+        assertTrue(attributeValues.contains("role2"));
+        assertTrue(attributeValues.contains("role3"));
+        assertTrue(attributeValues.contains("role4"));
+    }
+
+    @Test
+    public void testSAMLTokenGenerationRoleMappingNotJoined() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLRoleListMapper roleMapper = new SAMLRoleListMapper();
+
+        ProtocolMapperModel attributeRoles = SAMLRoleListMapper.create("Role mapper joined","Role", "basic", null, false);
+        attributeRoles.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeRoles, roleMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(4, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("role", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("role1"));
+        assertTrue(attributeValues.contains("role2"));
+        assertTrue(attributeValues.contains("role3"));
+        assertTrue(attributeValues.contains("role4"));
     }
 }

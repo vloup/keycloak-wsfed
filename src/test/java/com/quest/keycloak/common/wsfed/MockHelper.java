@@ -29,9 +29,12 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.management.relation.Role;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -219,7 +222,6 @@ public class MockHelper {
         when(user.isMemberOf(group1)).thenReturn(true);
         when(user.isMemberOf(group2)).thenReturn(true);
         when(user.isMemberOf(group3)).thenReturn(true);
-
     }
 
     protected void initializeLoginFormsProviderMock() {
@@ -264,6 +266,7 @@ public class MockHelper {
         when(getClientSessionModel().getId()).thenReturn(UUID.randomUUID().toString());
         when(getClientSessionModel().getClient()).thenReturn(getClient());
         when(getClientSessionModel().getRedirectUri()).thenReturn(getClientId());
+        when(clientSession.getRealm()).thenReturn(realm);
 
         for(Map.Entry<String, String> entry : getClientSessionNotes().entrySet()) {
             when(getClientSessionModel().getNote(entry.getKey())).thenReturn(entry.getValue());
@@ -275,6 +278,23 @@ public class MockHelper {
         }
 
         when(getClientSessionModel().getProtocolMappers()).thenReturn(pm);
+        RoleModel role1 = mock(RoleModel.class);
+        RoleModel role2 = mock(RoleModel.class);
+        RoleModel role3 = mock(RoleModel.class);
+        RoleModel role4 = mock(RoleModel.class);
+        when(role1.getName()).thenReturn("role1");
+        when(role2.getName()).thenReturn("role2");
+        when(role3.getName()).thenReturn("role3");
+        when(role4.getName()).thenReturn("role4");
+
+        List<RoleModel> roles = Arrays.asList(role1, role2, role3, role4);
+        when(clientSession.getRoles()).thenReturn(Stream.of("role1", "role2", "role3", "role4").collect(Collectors.toSet()));
+        when(realm.getRoleById(anyString())).thenReturn(null);
+        for(RoleModel role: roles) {
+            when(role.getContainer()).thenReturn(client);
+            when(role.isComposite()).thenReturn(false);
+            when(realm.getRoleById(role.getName())).thenReturn(role);
+        }
     }
 
     protected void initializeAuthSessionModelMock() {

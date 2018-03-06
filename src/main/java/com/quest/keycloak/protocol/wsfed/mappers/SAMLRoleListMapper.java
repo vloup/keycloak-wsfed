@@ -28,6 +28,10 @@ import org.keycloak.provider.ProviderConfigProperty;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class handles the mapping of roles to attributes for the WSFed protocol. This is handled by calling the
+ * existing keycloak SAML 2.0 role mapper.
+ */
 public class SAMLRoleListMapper extends AbstractWsfedProtocolMapper implements WSFedSAMLRoleListMapper {
     public static final String PROVIDER_ID = "wsfed-saml-role-list-mapper";
 
@@ -63,12 +67,31 @@ public class SAMLRoleListMapper extends AbstractWsfedProtocolMapper implements W
         return PROVIDER_ID;
     }
 
+    /**
+     * Calls keycloak's role mapper to perform the mapping from the sessions' attributes using the parameters
+     * defined in the mapping model.
+     *
+     * @param roleAttributeStatement The attribute statement to enrich with the roles
+     * @param mappingModel the mapping model with the information on how to map
+     * @param session The keycloak session
+     * @param userSession The user's session. Not actually used, astonishingly
+     * @param clientSession The client session. The role information is gathered from here as all roles for the user-client session is actually attached to this object during authentication
+     */
     @Override
     public void mapRoles(AttributeStatementType roleAttributeStatement, ProtocolMapperModel mappingModel, KeycloakSession session, UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         RoleListMapper samlMapper = new RoleListMapper();
         samlMapper.mapRoles(roleAttributeStatement, mappingModel, session, userSession, clientSession);
     }
 
+    /**
+     * Creates a protocol mapper object. Mainly used for testing, but can also be used to add default mappers to a client.
+     * @param name The name of the mapper
+     * @param samlAttributeName The name of the attribute in the saml assertion
+     * @param nameFormat can be "basic", "URI reference" or "unspecified"
+     * @param friendlyName The friendly name of the attribute. Unused in saml 1.1
+     * @param singleAttribute If true, all roles will be stored under one attribute with multiple attribute values
+     * @return a protocol mapper for a role mapping
+     */
     public static ProtocolMapperModel create(String name, String samlAttributeName, String nameFormat, String friendlyName, boolean singleAttribute) {
         ProtocolMapperModel mapper = RoleListMapper.create(name, samlAttributeName, nameFormat, friendlyName, singleAttribute);
         mapper.setProtocolMapper(PROVIDER_ID);
