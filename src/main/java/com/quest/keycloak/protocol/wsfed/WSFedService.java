@@ -33,6 +33,7 @@ import javax.ws.rs.core.Response;
 import com.quest.keycloak.common.wsfed.WSFedConstants;
 import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedProtocolParameters;
+import com.quest.keycloak.protocol.wsfed.installation.WSFedIDPDescriptorClientInstallation;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.events.Errors;
@@ -114,18 +115,7 @@ public class WSFedService extends AuthorizationEndpointBase {
     @Path("descriptor")
     @Produces(MediaType.APPLICATION_XML)
     public String getDescriptor() throws Exception {
-        KeyManager keyManager = session.keys();
-        KeyManager.ActiveRsaKey activeKey = keyManager.getActiveRsaKey(realm);
-        InputStream is = getClass().getResourceAsStream("/wsfed-idp-metadata-template.xml");
-        String template = "Error getting descriptor";
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(is))){
-            template = br.lines().collect(Collectors.joining("\n"));
-            template = template.replace("${idp.entityID}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
-            template = template.replace("${idp.sso.sts}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
-            template = template.replace("${idp.sso.passive}", RealmsResource.protocolUrl(uriInfo).build(realm.getName(), WSFedLoginProtocol.LOGIN_PROTOCOL).toString());
-            template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(activeKey.getCertificate()));
-        }
-        return template;
+        return WSFedIDPDescriptorClientInstallation.getIDPDescriptorForClient(session, realm, uriInfo.getBaseUri());
     }
 
     /**
