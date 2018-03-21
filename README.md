@@ -2,7 +2,9 @@
 
 * Currently working on 3.4.3.Final (check tags for compatibility with previous keycloak versions)
 
-## Install
+## How to Install
+
+### Copy files
 
 This is an example with keycloak avaible at /opt/keycloak
 
@@ -21,15 +23,13 @@ install -v -m0755 -o keycloak -g keycloak -D module.xml /opt/keycloak/modules/sy
 
 ```
 
-## Enable zone
+### Enable module & load theme
 
 __layers.conf__
 
 ```Bash
 layers=keycloak,wsfed
 ```
-
-## Enable module & load theme
 
 __standalone.xml__
 
@@ -51,4 +51,5 @@ __standalone.xml__
 ...
 ```
 
-After that you need to set the Admin Console theme to wsfed then restart keycloak.
+After that you need to set the Admin Console theme to `wsfed` in the master realm and in the realm with the WS-FED 
+clients, then restart keycloak.
