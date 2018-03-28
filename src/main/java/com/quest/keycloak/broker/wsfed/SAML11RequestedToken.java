@@ -27,6 +27,7 @@ import org.keycloak.dom.saml.v1.assertion.SAML11AudienceRestrictionCondition;
 import org.keycloak.dom.saml.v1.assertion.SAML11ConditionAbstractType;
 import org.keycloak.dom.saml.v1.assertion.SAML11ConditionsType;
 import org.keycloak.dom.saml.v1.assertion.SAML11StatementAbstractType;
+import org.keycloak.dom.saml.v1.assertion.SAML11SubjectStatementType;
 import org.keycloak.dom.saml.v1.assertion.SAML11SubjectType;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
@@ -208,11 +209,11 @@ public class SAML11RequestedToken implements RequestedToken {
     public String getId() {
         if (!samlAssertion.getStatements().isEmpty()) {
             for (SAML11StatementAbstractType st : samlAssertion.getStatements()) {
-                if (st instanceof  SAML11AttributeStatementType) {
-                    SAML11AttributeStatementType attributeStatement = (SAML11AttributeStatementType)st;
+                if (st instanceof SAML11SubjectStatementType) {
+                    SAML11SubjectStatementType subjectStatement = (SAML11SubjectStatementType)st;
                     // First check if the nameIdentifier of the Subject is available
                     // Can the subject be false? What does the spec say?
-                    SAML11SubjectType subject = attributeStatement.getSubject();
+                    SAML11SubjectType subject = subjectStatement.getSubject();
                     if (subject != null && subject.getChoice() != null)  {
                         SAML11SubjectType.SAML11SubjectTypeChoice choice = subject.getChoice();
                         if (choice.getNameID() != null) {
@@ -223,11 +224,14 @@ public class SAML11RequestedToken implements RequestedToken {
                         }
                     }
                     // The "nameidentifier" is a unique user id.
-                    for (SAML11AttributeType attribute : attributeStatement.get()) {
-                        if ("nameidenfier".equalsIgnoreCase(attribute.getAttributeName())
-                                || JBossSAMLURIConstants.CLAIMS_NAME_IDENTIFIER.get().equalsIgnoreCase(attribute.getAttributeName())) {
-                            if (!attribute.get().isEmpty()) {
-                                return attribute.get().get(0).toString();
+                    if (subjectStatement instanceof SAML11AttributeStatementType) {
+                        SAML11AttributeStatementType attributeStatement = (SAML11AttributeStatementType)subjectStatement;
+                        for (SAML11AttributeType attribute : attributeStatement.get()) {
+                            if ("nameidenfier".equalsIgnoreCase(attribute.getAttributeName())
+                                    || JBossSAMLURIConstants.CLAIMS_NAME_IDENTIFIER.get().equalsIgnoreCase(attribute.getAttributeName())) {
+                                if (!attribute.get().isEmpty()) {
+                                    return attribute.get().get(0).toString();
+                                }
                             }
                         }
                     }
