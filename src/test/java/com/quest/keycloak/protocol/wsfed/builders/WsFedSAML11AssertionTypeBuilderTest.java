@@ -21,11 +21,16 @@ package com.quest.keycloak.protocol.wsfed.builders;
 import com.quest.keycloak.common.wsfed.MockHelper;
 import com.quest.keycloak.common.wsfed.TestHelpers;
 import com.quest.keycloak.protocol.wsfed.mappers.*;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.keycloak.dom.saml.v1.assertion.*;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.dom.saml.v2.assertion.AttributeType;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.saml.common.constants.GeneralConstants;
@@ -34,17 +39,15 @@ import org.keycloak.saml.common.exceptions.ConfigurationException;
 import org.keycloak.saml.processing.core.saml.v2.util.XMLTimeUtil;
 import org.mockito.MockitoAnnotations;
 
+import java.io.IOException;
 import java.net.URI;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.quest.keycloak.protocol.wsfed.builders.SAML11AssertionTypeBuilder.CLOCK_SKEW;
 import static com.quest.keycloak.protocol.wsfed.builders.WsFedSAMLAssertionTypeAbstractBuilder.WSFED_NAME_ID_FORMAT;
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.contains;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -334,4 +337,225 @@ public class WsFedSAML11AssertionTypeBuilderTest {
         assertTrue(attributeValues.contains("role3"));
         assertTrue(attributeValues.contains("role4"));
     }
+
+    @Test
+    public void testSAMLTokenGenerationJSTrivial() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper scriptMapper = new SAMLScriptBasedMapper();
+
+        ProtocolMapperModel attributeScript = SAMLScriptBasedMapper.create("Trivial script mapper","const", "basic", null, "var s = 'This is a trivial test'; s;", false);
+        attributeScript.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeScript, scriptMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(1, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("const", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("This is a trivial test"));
+    }
+
+    @Test
+    public void testSAMLTokenGenerationJSMorphedGroup() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper scriptMapper = new SAMLScriptBasedMapper();
+        String script = "var theUser = user; " +
+                "var groups = user.getGroups(); " +
+                "var result = ''; " +
+                "for each (var group in groups) result = result + 'morph-' + group.getName() + ';';" +
+                "result;";
+        ProtocolMapperModel attributeScript = SAMLScriptBasedMapper.create("Trivial script mapper","morphedGroup", "basic", null, script, false);
+        attributeScript.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeScript, scriptMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(1, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("morphedGroup", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.get(0).contains("morph-group1;"));
+        assertTrue(attributeValues.get(0).contains("morph-group2;"));
+        assertTrue(attributeValues.get(0).contains("morph-group3;"));
+    }
+
+    @Test
+    public void testSAMLTokenGenerationJSMorphedGroupArrayMultiple() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper scriptMapper = new SAMLScriptBasedMapper();
+        String script = "var theUser = user; " +
+                "var groups = user.getGroups(); " +
+                "var array = []; " +
+                "for each (var group in groups) array.push('morph-' + group.getName());" +
+                "var result = Java.to(array);" +
+                "result;";
+        ProtocolMapperModel attributeScript = SAMLScriptBasedMapper.create("Trivial script mapper","morphedGroup", "basic", null, script, false);
+        attributeScript.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeScript, scriptMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(3, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("morphedGroup", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("morph-group1"));
+        assertTrue(attributeValues.contains("morph-group2"));
+        assertTrue(attributeValues.contains("morph-group3"));
+    }
+
+    @Test
+    public void testSAMLTokenGenerationJSMorphedGroupListSingle() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper scriptMapper = new SAMLScriptBasedMapper();
+        String script = "var list = new java.util.ArrayList(); " +
+                "for each (var group in user.getGroups()) list.add('morph-' + group.getName());" +
+                "list;";
+        ProtocolMapperModel attributeScript = SAMLScriptBasedMapper.create("Trivial script mapper","morphedGroup", "basic", null, script, true);
+        attributeScript.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeScript, scriptMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(1, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("morphedGroup", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("morph-group1"));
+        assertTrue(attributeValues.contains("morph-group2"));
+        assertTrue(attributeValues.contains("morph-group3"));
+    }
+
+    @Ignore
+    @Test
+    public void testSAMLTokenGenerationJSShadowGroup() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper scriptMapper = new SAMLScriptBasedMapper();
+        String script = "var theUser = user; " +
+                "var HttpGet = Java.type('org.apache.http.client.methods.HttpGet');" +
+                "var HttpClients = Java.type('org.apache.http.impl.client.HttpClients');" +
+                "var EntityUtils = Java.type('org.apache.http.util.EntityUtils');" +
+                "var StandardCharsets = Java.type('java.nio.charset.StandardCharsets');" +
+                "var request = new HttpGet('http://localhost/shadowgroups/usg/' + theUser.getUsername() + '?applicationUrl=smip.dev.icrc.org&mobilityStatus=mobile&jobFunctionCode=000152');" +
+                "request.addHeader('referer', 'http://test.com');" +
+                "var client = HttpClients.createDefault();" +
+                "var response = client.execute(request);" +
+                "try {" +
+                "   var jsonString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);" +
+                "   var obj = JSON.parse(jsonString);" +
+                "   var array = obj.$values;" +
+                "} finally {" +
+                "   response.close();" +
+                "   client.close();" +
+                "}" +
+                "var result = Java.to(array);" +
+                "result;";
+        ProtocolMapperModel attributeScript = SAMLScriptBasedMapper.create("Trivial script mapper","morphedGroup", "basic", null, script, false);
+        attributeScript.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeScript, scriptMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(7, attributesStatements.get().size());
+        Set<String> attributeNameSet = attributesStatements.get().stream().map(attribute -> attribute.getAttributeName()).collect(Collectors.toSet());
+        assertEquals(1, attributeNameSet.size());
+        assertEquals("morphedGroup", attributeNameSet.toArray(new String[1])[0]);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("alpha"));
+        assertTrue(attributeValues.contains("bravo"));
+        assertTrue(attributeValues.contains("charlie"));
+        assertTrue(attributeValues.contains("delta"));
+        assertTrue(attributeValues.contains(mockHelper.getUser().getUsername()));
+    }
+
 }

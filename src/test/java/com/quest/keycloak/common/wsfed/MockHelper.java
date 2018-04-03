@@ -35,6 +35,7 @@ import java.util.stream.Stream;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.management.relation.Role;
+import javax.script.ScriptEngineManager;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -46,6 +47,9 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.*;
 import org.keycloak.models.KeyManager.ActiveHmacKey;
 import org.keycloak.protocol.ProtocolMapper;
+import org.keycloak.scripting.DefaultScriptingProvider;
+import org.keycloak.scripting.DefaultScriptingProviderFactory;
+import org.keycloak.scripting.ScriptingProvider;
 import org.keycloak.services.managers.ClientSessionCode;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.AuthenticationSessionProvider;
@@ -254,6 +258,8 @@ public class MockHelper {
         when(context.getUri()).thenReturn(uriInfo);
         ClientConnection clientConnection = mock(ClientConnection.class);
         when(context.getConnection()).thenReturn(clientConnection);
+
+        when(getSession().getProvider(ScriptingProvider.class)).thenReturn(new DefaultScriptingProviderFactory().create(getSession()));
     }
 
     protected void initializeKeycloakSessionFactoryMock() {
@@ -314,6 +320,7 @@ public class MockHelper {
         Map<String, AuthenticatedClientSessionModel> map = Collections.singletonMap(getClient().getId(), getClientSessionModel());
         when(getUserSessionModel().getAuthenticatedClientSessions()).thenReturn(map);
         doReturn(getUser().getId()).when(getUserSessionModel()).getBrokerUserId();
+        when (getUserSessionModel().getRealm()).thenReturn(getRealm());
     }
 
     public String getBaseUri() {

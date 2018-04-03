@@ -73,8 +73,8 @@ public class SAMLGroupMembershipMapper extends AbstractWsfedProtocolMapper imple
      * Creates an protocol mapper model for the this group membership mapper. This mapper model is meant to be used for
      * testing, as normally such objects are created in a different manner through the keycloak GUI.
      *
-     * @param name The name of the mapper (this has no functionnal use)
-     * @param samlAttributeName The name of the attribute in the SAML claim
+     * @param name The name of the mapper (this has no functional use)
+     * @param samlAttributeName The name of the attribute in the SAML attribute
      * @param nameFormat can be "basic", "URI reference" or "unspecified"
      * @param friendlyName a display name, only useful for the keycloak GUI
      * @param singleAttribute If true, all groups will be stored under one attribute with multiple attribute values

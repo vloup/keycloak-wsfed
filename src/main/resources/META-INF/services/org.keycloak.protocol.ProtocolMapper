@@ -5,3 +5,4 @@ com.quest.keycloak.protocol.wsfed.mappers.SAMLRoleListMapper
 com.quest.keycloak.protocol.wsfed.mappers.SAMLUserPropertyAttributeStatementMapper
 com.quest.keycloak.protocol.wsfed.mappers.SAMLUserAttributeStatementMapper
 com.quest.keycloak.protocol.wsfed.mappers.SAMLGroupMembershipMapper
+com.quest.keycloak.protocol.wsfed.mappers.SAMLScriptBasedMapper
