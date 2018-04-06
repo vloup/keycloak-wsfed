@@ -34,8 +34,6 @@ import java.util.stream.Stream;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.management.relation.Role;
-import javax.script.ScriptEngineManager;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
@@ -47,7 +45,6 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.*;
 import org.keycloak.models.KeyManager.ActiveHmacKey;
 import org.keycloak.protocol.ProtocolMapper;
-import org.keycloak.scripting.DefaultScriptingProvider;
 import org.keycloak.scripting.DefaultScriptingProviderFactory;
 import org.keycloak.scripting.ScriptingProvider;
 import org.keycloak.services.managers.ClientSessionCode;
@@ -56,6 +53,7 @@ import org.keycloak.sessions.AuthenticationSessionProvider;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
 import org.keycloak.sessions.StickySessionEncoderProvider;
 import org.keycloak.storage.UserStorageManager;
+import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
@@ -230,7 +228,15 @@ public class MockHelper {
 
     protected void initializeLoginFormsProviderMock() {
         when(getLoginFormsProvider().setError(anyString())).thenReturn(getLoginFormsProvider());
-        when(getLoginFormsProvider().createErrorPage(Response.Status.BAD_REQUEST)).thenReturn(mock(Response.class));
+        when(getLoginFormsProvider().createErrorPage(Matchers.any(Response.Status.class))).thenAnswer(new Answer<Response>() {
+            @Override
+            public Response answer(final InvocationOnMock invocation) throws Throwable {
+                if (invocation.getArguments()[0] instanceof Response.Status) {
+                    return Response.status((Response.Status) invocation.getArguments()[0]).build();
+                }
+                return Response.serverError().build();
+            }
+        });
     }
 
     protected void initializeKeycloakSessionMock() {

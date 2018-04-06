@@ -277,6 +277,11 @@ public class WSFedEndpoint {
 
             identity.setUsername(token.getUsername());
 
+            if (identity.getUsername() == null) {
+                throw new IdentityBrokerException("Cannot get a username from the external IdP's token. It must be " +
+                        "set for Keycloak to be able to link the external IdP user to a local user");
+            }
+
             if (token.getEmail() != null) {
                 identity.setEmail(token.getEmail());
             }
@@ -305,6 +310,8 @@ public class WSFedEndpoint {
 
             return callback.authenticated(identity);
 
+        } catch (IdentityBrokerException e) {
+            throw e;
         } catch (Exception e) {
             throw new IdentityBrokerException("Could not process response from WS-Fed identity provider.", e);
         }
@@ -328,7 +335,7 @@ public class WSFedEndpoint {
                 token = new SAML2RequestedToken(session, wsfedResponse, rt, realm);
             }
             else if (rstr.getTokenType().compareTo(URI.create("urn:oasis:names:tc:SAML:1.0:assertion")) == 0) {
-                token = new SAML11RequestedToken(wsfedResponse, rt, realm);
+                token = new SAML11RequestedToken(wsfedResponse, rt);
             }
             else if (rstr.getTokenType().compareTo(URI.create("urn:ietf:params:oauth:token-type:jwt")) == 0) {
                 throw new NotImplementedException("We don't currently support a token type of urn:ietf:params:oauth:token-type:jwt");

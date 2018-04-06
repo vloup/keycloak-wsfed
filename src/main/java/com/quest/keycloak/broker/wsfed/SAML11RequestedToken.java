@@ -57,11 +57,14 @@ import java.security.PublicKey;
 import java.util.List;
 
 /**
+ * The purpose of this class is to handle a SAML 1.1 token sent back from an external IdP. It has methods both to verify
+ * that the token is valid, and to extract the elements needed by keycloak from the token.
+ *
  * @author <a href="mailto:brat000012001@gmail.com">Peter Nalyvayko</a>
+ * @author <a href="mailto:alistair.doswald@elca.ch">Alistair Doswald</a>
  * @version $Revision: 1 $
  * @date 10/4/2016
  */
-
 public class SAML11RequestedToken implements RequestedToken {
 
     //    private NameIDType subjectNameID;
@@ -69,10 +72,18 @@ public class SAML11RequestedToken implements RequestedToken {
     private SAML11AssertionType samlAssertion;
     private String wsfedResponse;
 
-    public SAML11RequestedToken(String wsfedResponse, Object token, RealmModel realm) throws IOException, ParsingException, ProcessingException, ConfigurationException {
+    /**
+     * Builds the SAMLAssertion from the passed token as the basis of the SAML11RequestedToken.
+     * @param wsfedResponse The wsfedResponse, in String format
+     * @param token An object containing the SAML 1.1 assertion
+     * @throws IOException Thrown if there's a problem parsing the token
+     * @throws ParsingException Thrown if there's a problem parsing the token
+     */
+    public SAML11RequestedToken(String wsfedResponse, Object token) throws IOException, ParsingException {
         this.wsfedResponse = wsfedResponse;
-        this.samlAssertion = getAssertionType(token, realm);
+        this.samlAssertion = getAssertionType(token);
     }
+
 
     public static boolean isSignatureValid(Element assertionElement, PublicKey publicKey) {
         try {
@@ -124,6 +135,10 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
+    /**
+     * Returns the first name of the user. Expects a "givenname" attribute from which to extract the information
+     * @return The first name of the user attempting to log in
+     */
     @Override
     public String getFirstName() {
         if (!samlAssertion.getStatements().isEmpty()) {
@@ -144,6 +159,10 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
+    /**
+     * Returns the last name of the user. Expects a "surname" attribute from which to extract the information
+     * @return The last name of the user attempting to log in
+     */
     @Override
     public String getLastName() {
         if (!samlAssertion.getStatements().isEmpty()) {
@@ -164,8 +183,40 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
+    /**
+     * Returns the username of the user as defined in the external IdP. This is necessary for keycloak to register a new
+     * user from an external IdP.
+     * First attempts to get the "name" attribute, then attempts to get the subject nameId or "nameidentifier" attribute
+     * @return The username of the user attempting to log in
+     */
     @Override
     public String getUsername() {
+        String nameAttribute = getNameAttribute();
+        if (nameAttribute != null) {
+            return nameAttribute;
+        }
+        return getSubjectOrNameIdentifier();
+    }
+
+    /**
+     * Returns the ID of the user as defined in the external IdP. This is necessary for keycloak to register a new
+     * user from an external IdP.
+     * Attempts to get in order: the subject nameId, the "nameidentifier" attribute and the "name" attribute
+     * @return The ID of the user attempting to log in
+     */
+    @Override
+    public String getId() {
+        String id = getSubjectOrNameIdentifier();
+        if (id != null) {
+            return id;
+        }
+        return getNameAttribute();
+    }
+
+    /**
+     * @return the "name" attribute from the SAML assertion
+     */
+    private String getNameAttribute(){
         if (!samlAssertion.getStatements().isEmpty()) {
             for (SAML11StatementAbstractType st : samlAssertion.getStatements()) {
                 if (st instanceof  SAML11AttributeStatementType) {
@@ -185,6 +236,47 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
+    /**
+     * @return The subject nameId or nameIdentifier from the SAML assertion
+     */
+    private String getSubjectOrNameIdentifier(){
+        if (!samlAssertion.getStatements().isEmpty()) {
+            for (SAML11StatementAbstractType st : samlAssertion.getStatements()) {
+                if (st instanceof SAML11SubjectStatementType) {
+                    SAML11SubjectStatementType subjectStatement = (SAML11SubjectStatementType)st;
+                    SAML11SubjectType subject = subjectStatement.getSubject();
+                    //first attempts to get subject
+                    if (subject != null && subject.getChoice() != null)  {
+                        SAML11SubjectType.SAML11SubjectTypeChoice choice = subject.getChoice();
+                        if (choice.getNameID() != null) {
+                            String nameId = choice.getNameID().getValue();
+                            if (nameId != null && nameId.length() > 0) {
+                                return nameId;
+                            }
+                        }
+                    }
+                    // The "nameidentifier" is a unique user id.
+                    if (subjectStatement instanceof SAML11AttributeStatementType) {
+                        SAML11AttributeStatementType attributeStatement = (SAML11AttributeStatementType)subjectStatement;
+                        for (SAML11AttributeType attribute : attributeStatement.get()) {
+                            if ("nameidentifier".equalsIgnoreCase(attribute.getAttributeName())
+                                    || JBossSAMLURIConstants.CLAIMS_NAME_IDENTIFIER.get().equalsIgnoreCase(attribute.getAttributeName())) {
+                                if (!attribute.get().isEmpty()) {
+                                    return attribute.get().get(0).toString();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the email of the user. Expects a "emailaddress" attribute from which to extract the information
+     * @return The email of the user attempting to log in
+     */
     @Override
     public String getEmail() {
         if (!samlAssertion.getStatements().isEmpty()) {
@@ -205,41 +297,6 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
-    @Override
-    public String getId() {
-        if (!samlAssertion.getStatements().isEmpty()) {
-            for (SAML11StatementAbstractType st : samlAssertion.getStatements()) {
-                if (st instanceof SAML11SubjectStatementType) {
-                    SAML11SubjectStatementType subjectStatement = (SAML11SubjectStatementType)st;
-                    // First check if the nameIdentifier of the Subject is available
-                    // Can the subject be false? What does the spec say?
-                    SAML11SubjectType subject = subjectStatement.getSubject();
-                    if (subject != null && subject.getChoice() != null)  {
-                        SAML11SubjectType.SAML11SubjectTypeChoice choice = subject.getChoice();
-                        if (choice.getNameID() != null) {
-                            String nameId = choice.getNameID().getValue();
-                            if (nameId != null && nameId.length() > 0) {
-                                return nameId;
-                            }
-                        }
-                    }
-                    // The "nameidentifier" is a unique user id.
-                    if (subjectStatement instanceof SAML11AttributeStatementType) {
-                        SAML11AttributeStatementType attributeStatement = (SAML11AttributeStatementType)subjectStatement;
-                        for (SAML11AttributeType attribute : attributeStatement.get()) {
-                            if ("nameidenfier".equalsIgnoreCase(attribute.getAttributeName())
-                                    || JBossSAMLURIConstants.CLAIMS_NAME_IDENTIFIER.get().equalsIgnoreCase(attribute.getAttributeName())) {
-                                if (!attribute.get().isEmpty()) {
-                                    return attribute.get().get(0).toString();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return getUsername();
-    }
 
     @Override
     public String getSessionIndex() {
@@ -247,6 +304,9 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
+    /**
+     * @return the original assertion
+     */
     @Override
     public Object getToken() { return samlAssertion; }
 
@@ -277,7 +337,14 @@ public class SAML11RequestedToken implements RequestedToken {
         return null;
     }
 
-    public SAML11AssertionType getAssertionType(Object token, RealmModel realm) throws IOException, ParsingException, ProcessingException, ConfigurationException {
+    /**
+     * Parses the input SAML token to return a SAML11Assertion
+     * @param token The input SAML token
+     * @return the SAML 1.1 Assertion returned by the external IdP
+     * @throws IOException Thrown if there's a problem parsing the token
+     * @throws ParsingException Thrown if there's a problem parsing the token
+     */
+    public SAML11AssertionType getAssertionType(Object token) throws IOException, ParsingException {
         SAML11AssertionType assertionType =  null;
         ByteArrayInputStream bis = null;
         try {
