@@ -1,0 +1,5 @@
+Dependencies: org.keycloak.keycloak-core,
+ org.keycloak.keycloak-services,org.keycloak.keycloak-server-spi,
+ org.keycloak.keycloak-server-spi-private,
+ org.keycloak.keycloak-saml-core,
+ org.jboss.logging,javax.api,javax.ws.rs.api
