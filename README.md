@@ -18,7 +18,7 @@ This module is currently working on 3.4.3.Final (check tags for compatibility wi
 
 ### Copy files
 
-This is an example with keycloak avaible at /opt/keycloak
+This is an example with keycloak available at /opt/keycloak
 
 ```Bash
 #Create layer in keycloak setup
@@ -102,13 +102,13 @@ This will give the following information:
  * **Validating X509 Certificates** (in the `X509Certificate` tags). This is only use if the **Validate Signature** 
  option is set to on (which is recommended).
  
- The remaining options are:
+The remaining options are:
   
-  * **WS-Fed Realm**: This is the name of the client in the keycloak external IdP. The value is unimportant as long
-  as it is the same in both the configuration of the identity broker and the external IdP.
-  * **Backchannel Logout**: set to "on" if the external IdP supports the Backchannel logout
-  * **Handle Empty Action as wsignoutcleanup1.0**: normally for the clean-up phase of a sign-out, the `wa` action 
-  must be set to wsignoutcleanup1.0, but with this option activated, an empty `wa` will be considered as a cleanup. 
+ * **WS-Fed Realm**: This is the name of the client in the keycloak external IdP. The value is unimportant as long 
+ as it is the same in both the configuration of the identity broker and the external IdP.
+ * **Backchannel Logout**: set to "on" if the external IdP supports the Backchannel logout
+ * **Handle Empty Action as wsignoutcleanup1.0**: normally for the clean-up phase of a sign-out, the `wa` action 
+ must be set to wsignoutcleanup1.0, but with this option activated, an empty `wa` will be considered as a cleanup. 
  
 #### Setting up the client (WS Resource)
  
@@ -118,8 +118,30 @@ identity broker.
 
 In the `Settings` tab, the only important elements to set are:
 
-* the **SAML Assertion Token Format**, which specifies the type of token to use. In this specific case, it is unimportant
-as Keycloak will accept any of the three possible token formats. However, this can have an impact for other 
+* the **SAML Assertion Token Format**, which specifies the type of token to use. Currently only SAML 1.1 and 2.0 tokens
+are supported.
 WS-Fed identity brokers. 
 * the **Valid Redirect URIs** parameter. For a Keyclock identity broker, this value MUST be set to the value of the 
 **Redirect URI** in the settings tab.
+
+##### Using mappers to automatically get first broker login information
+
+If no mappers are setup, upon the first login using Keycloak as an identity broker, and after authentication with the 
+external IdP is successful, Keycloak will display a form to get the missing information. The information required will
+be: **username**, **email**, **first name** and **last name**. The username will always be set, as keycloak requires
+this information and will use the subject information if necessary, but it is possible to modify it.
+
+However, it is also possible to set this information by passing the information as attributes in the SAML assertion. If
+all information is provided, Keycloak will skip the form, and directly create the user. Currently however, this only
+works with SAML 1.1 assertions. 
+
+To get the information, the following mappers must be created in the client:
+
+* A mapper for the username: Should be of type `SAML User Property`. The **property** should be set to `username`. The 
+**SAML Attribute Name** MUST be set to `name`.
+* A mapper for the email:  Should be of type `SAML User Property`. The **property** should be set to `email`. The 
+**SAML Attribute Name** MUST be set to `emailaddress`.
+* A mapper for the first name:  Should be of type `SAML User Property`. The **property** should be set to `firstName`. The 
+**SAML Attribute Name** MUST be set to `givenname`.
+* A mapper for the last name:  Should be of type `SAML User Property`. The **property** should be set to `lastName`. The 
+**SAML Attribute Name** MUST be set to `surname`.
