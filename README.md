@@ -4,7 +4,8 @@ The purpose of this module is to support the
 [WS-FED protocol](http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html) 
 in [Keycloak](https://www.keycloak.org/). Only Web (Passive) requestors are supported, as defined in 
 [section 13 of the specification](http://docs.oasis-open.org/wsfed/federation/v1.2/os/ws-federation-1.2-spec-os.html#_Toc223175002).
-However, in this capacity the WS-Fed protocol can be used for communication with:
+It should be noted that the optional elements of the protocol (attribute services and pseudonym services) are not 
+currently supported. However, in its current capacity the WS-Fed protocol can be used for communication with:
 
 * Keycloak clients (WS Resources), with Keycloak acting as an IdP/STS.
 * Other IdPs, with Keycloak acting as an Identity Broker.
@@ -46,6 +47,7 @@ layers=keycloak,wsfed
 __standalone.xml__
 
 ```xml
+...
 <web-context>auth</web-context>
 <providers>
     <provider>module:com.quest.keycloak-wsfed</provider>
@@ -70,14 +72,224 @@ clients, then restart keycloak.
 
 ### How to setup a Keycloak client
 
-### How to setup a Keycloak identity broker.
+In this section we will explain how to setup a keycloak client. We will use two types of servers to act as WS-Fed 
+Resources (Service Providers) for our example: The first is an 
+[IdP test client](https://github.com/cloudtrust/idp-test-client), while the second is Sharepoint 2013.
+
+#### Creating a client
+
+A WS-Fed client is added as any other: go to the **Clients** menu item and create a new client, making sure that in the 
+"Add Client" screen, the **client protocol**, is `wsfed`. Normally, any value can be used for the **Client ID**, as long
+as it is shared with the WS-Fed resource.
+
+A small side note: in WS-Fed parlance, the actual term for **Client ID** is _Realm_, and is the value shared in the 
+`wtrealm` uri query. This can obviously lead to confusion when working with keycloak.
+
+##### Settings tab
+
+The values **Name**, **Description**, **Enabled**, **Consent required** and **Client template** are the same general 
+parameters for clients as described in the 
+[Keycloak documentation for SAML clients](https://www.keycloak.org/docs/latest/server_admin/index.html#saml-clients). 
+
+The following set of options are protocol specific: The option **Send JWT instead of SAML** determines if a JWT token 
+or SAML is used. If a JWT token is used, the option **Include x5t in header** is available. If a SAML token is used, the 
+**SAML Assertion Token Format** option allows the use of `SAML 1.1` or `SAML 2.0` tokens. The **Front Channel Logout**
+option determines if the logout requires a browser redirect to the client (for `true`) or if the server performs a 
+background invocation (for`false`).
+
+The last set of options concern the URIs of the client. The values **Root URL**, **Valid Redirect URIs** and **Base 
+URL** are the same as those described in the 
+[Keycloak documentation for SAML clients](https://www.keycloak.org/docs/latest/server_admin/index.html#saml-clients).
+
+##### Mappers tab
+
+Mappers are generally handled in the same way as described as described in the 
+[keycloak documentation on mappers](https://www.keycloak.org/docs/latest/server_admin/index.html#_protocol-mappers). The
+difference is that there are two sets of mappers, **SAML mappers** and **OIDC mappers**. **SAML mappers** should be used
+if a SAML token is used, and OIDC mappers should be used if a **JWT token** is used. Doing the contrary will not cause 
+an error, but the mapper will be ignored.
+
+Mappers are equivalent to those from the SAML and OIDC clients, however, there is an extra mapper present
+in the WS-Fed SAML mappers: a `SAML javascript mapper`. It's use is almost analog to the OIDC script mapper: 
+the [nashorn javascript engine](https://docs.oracle.com/javase/10/nashorn/introduction.htm#JSNUG136) is used to 
+evaluate the input script, and the last statement is the value that will be returned in the SAML attribute. The 
+sole difference to the OIDC varient is that the `SAML javascript mapper` can handle Iterables or arrays as a return 
+value: the result will either be multiple attributes, or a single attribute with a grouped value, depending on the 
+value of the **Single Group Attribute** option.
+
+##### Installation tab
+
+The installation tab gives access to the WS-Fed metadata, which can be used to configure the WS-Fed resource. This 
+information can also be accessed at `http[s]://<hostname>:<port>/auth/realms/<realm>/protocol/wsfed/descriptor`.
+
+#### Example: configuration with the IdP test client
+
+For this example we will be running keycloak with the WS-Fed module installed on localhost:8080 and the 
+[IdPTestClient](https://github.com/cloudtrust/idp-test-client) on localhost:7000. 
+
+##### Realm setup
+
+Create a realm `TestRealm`, with the roles `user`, `testUser` and `groupUser` in addition to keycloak's default roles. 
+In this realm, create a user with the following characteristics: 
+
+* **Username**: `test.testuser`
+* **Email**: `test.testuser@testrealm.io`
+* **Firstname**: `test`
+* **Lastname**: `testuser`
+* **User Enabled**: `on`
+* **Email Verified**: `off`
+
+In **credentials**, set the password to `password` (with **Temporary** set to `off`). In **Role Mappings**, and the roles
+`user` and `testUser`.
+
+##### Client setup
+
+Go to the **Clients** menu, and create a new client. In the "Add Client" page screen choose `wsfed` for the 
+**client protocol**, `WSFedTestClient` for the **Client ID** and save. 
+
+In the **Settings** tab, set the **Valid Redirect URIs** to `http://localhost:7000/*`, leave the rest of the values 
+unchanged and save.
+
+In the **Mappers** tab, create a new mapper. For **Mapper Type** select `SAML Role list`, and then set the **Name** to 
+`SAML Role mapper` and the **SAML Attribute Nameformat** to `Basic` before saving.
+
+Go to the **Installation** tab, and select `WSFed Metadata IDP Descriptor`, the values will be useful for the next step.
+
+##### IdPTestClient setup
+
+Clone the [idp-test-client](https://github.com/cloudtrust/idp-test-client) repository, and follow the instructions to 
+build the jar. 
+
+Create a new certif.cer file. The format of the file should be the following:
+
+```
+-----BEGIN CERTIFICATE-----
+CERTIFICATE_VALUE
+-----END CERTIFICATE-----
+```
+
+With `CERTIFICATE_VALUE` being the value from the "X509Certificate" field from the `WSFed Metadata IDP Descriptor`.
+
+Create a keystore with the command: 
+
+```
+keytool -importcert -file certif.cer -keystore localstore.jks -alias "TestRealm"
+```
+
+And choose `localpass` as the password (make sure that the java keytool is on the PATH).
+
+Create the following `fediz-config.xml` file for the ws-fed configuration of the IdPTestClient:
+
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<FedizConfig>
+    <contextConfig name="/">
+        <audienceUris>
+            <audienceItem>http://localhost:7000/</audienceItem>
+        </audienceUris>
+        <certificateStores>
+            <trustManager>
+                <keyStore file="file:///absolute/path/to/localstore.jks" password="localpass" type="JKS" />
+            </trustManager>
+        </certificateStores>
+        <trustedIssuers>
+            <issuer certificateValidation="PeerTrust" />
+        </trustedIssuers>
+        <protocol xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="federationProtocolType" version="1.2">
+            <issuer>http://localhost:8080/auth/realms/TestRealm/protocol/wsfed</issuer>
+            <realm>WSFedTestClient</realm>
+            <reply>/j_spring_fediz_security_check</reply>
+        </protocol>
+        <logoutURL>/wsfedLogout</logoutURL>
+        <logoutRedirectTo>/performLogout</logoutRedirectTo>
+    </contextConfig>
+</FedizConfig>
+```
+
+Note that the "issuer" is the value in "EndpointReference" from the `WSFed Metadata IDP Descriptor`.
+
+Then, making sure that the jar and the fediz-config.xml are in a same directory, run:
+
+```
+java -jar IdPTestClient.jar --fediz.configFilePath=fediz_config.xml
+```
+
+The website at localhost:7000 will have the option to login with WS-Fed.
+
+#### Example: configuration in Sharepoint 2013
+
+The realm setup for this example is the same as the one for the IdPTestClient setup.
+
+Go to the **Clients** menu, and create a new client. In the "Add Client" page screen choose `wsfed` for the 
+**client protocol**. For Sharepoint, the **Client ID** must be in the urn format, so we will have 
+`urn:testsharepoint:wsfed` (with an incorrect format, Sharepoint will throw an Unknown SPRequest error). Save the 
+values.
+
+Sharepoint will only accept https connections (this is also true for the keycloak endpoint), and SAML 1.1 tokens. 
+Imagining that Sharepoint is also on the localhost, we have the following values in the **Settings** tab:
+
+* **SAML Assertion Token Format**: `SAML1.1`
+* **Valid Redirect URIs**: `https://localhost/*`
+
+In the **Mappers** tab create the following mappers:
+
+1. **Name**: `SAML role list`, **Mapper Type**: `SAML Role List`, **Role attribute name**: `Role`, **SAML Attribute 
+NameFormat**: `Basic`
+2. **Name**: `SAML upn`, **Mapper Type**: `SAML User Property`, **Property**: `username`, **SAML Attribute Name**: 
+`upn`, **SAML Attribute NameFormat**: `Basic`
+3. **Name**: `SAML email`, **Mapper Type**: `SAML User Property`, **Property**: `email`, **SAML Attribute Name**: 
+`emailaddress`, **SAML Attribute NameFormat**: `Basic`
+
+In the **Installation** tab, copy the content of the "X509Certificate" field from the `WSFed Metadata IDP Descriptor` to
+a new certif.cer file.
+
+Next is setting up Sharepoint to use the Keycloak server. The following
+[guide to configure ADFS with Sharepoint](https://sharepointobservations.wordpress.com/2013/08/19/sharepoint-2013-how-to-install-and-configure-adfs-2-0/)
+describes the steps from the **Configure SharePoint Web Application** section with pictures. The basic steps are the 
+following:
+
+**_Step 1_**: Run the following powershell script as administrator from the SharePoint 2013 Management Shell:
+
+```powershell
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("Path\To\certif.cer")
+
+### This section should only be necessary for self-signed certificates ###
+ $tokenSigningCertificateName = "Keycloak Cloudtrust TestRealm"
+ if (Get-SPTrustedRootAuthority -Identity $tokenSigningCertificateName -ea "silentlycontinue") {
+     Write-Host "Signing certificate already trusted."
+   }
+   else {
+     Write-Host "Adding signing certificate to SharePoint trusts."
+     New-SPTrustedRootAuthority -Name $tokenSigningCertificateName -Certificate $cert
+   }
+### end section ###
+
+ $idClaim = New-SPClaimTypeMapping -IncomingClaimType "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" -IncomingClaimTypeDisplayName "Email address" -SameAsIncoming
+ $map1 = New-SPClaimTypeMapping -IncomingClaimType "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn" -IncomingClaimTypeDisplayName "UPN" -SameAsIncoming
+ $map2 = New-SPClaimTypeMapping -IncomingClaimType "http://schemas.microsoft.com/ws/2008/06/identity/claims/role" -IncomingClaimTypeDisplayName "Role" -SameAsIncoming
+ 
+ $realm = "urn:testsharepoint:wsfed"
+ $signinurl = "https://localhost:8443/auth/realms/TestRealm/protocol/wsfed"
+ $ap = New-SPTrustedIdentityTokenIssuer -Name "KeycloakTestRealm" -Description "Trust to Keycloak" -Realm $realm -ImportTrustCertificate $cert -ClaimsMappings $map1, $map2, $idClaim  -SignInUrl $signinurl -IdentifierClaim $idClaim.InputClaimType
+ $ap.UseWReplyParameter = $true
+ $ap.Update()
+```
+
+Note that the `$signinurl` is the value in "EndpointReference" from the `WSFed Metadata IDP Descriptor`.
+
+**_Step 2_**: With Sharepoint 2013 Central Administration, go to **Manage Web Applications** > **Sharepoint - localhost:443** > 
+**Authentication Providers** > **default**, and under "Trusted Identity provider" select `KeycloakTestRealm`.
+
+When going to your Sharepoint at https://localhost, you will now have the option to log in with `KeycloakTestRealm`
+
+### How to setup a Keycloak identity broker
 
 We will explain here how to setup identity brokering using two instances of keycloak: one as identity broker, and the 
 second as external IdP. Naturally, for this to work, the WS-Fed module must be installed on both instances of Keycloak.
 
 #### Setting up the identity broker
 
-Go to the `Identity Providers` menu item and create a new identity provider selecting `WS-Fed` from the list.
+Go to the **Identity Providers** menu item and create a new identity provider selecting `WS-Fed` from the list.
 
 The first part of the settings are the general IdP settings, described in the 
 [keycloak documentation](https://www.keycloak.org/docs/latest/server_admin/index.html#_general-idp-config). The only 
@@ -99,7 +311,7 @@ This will give the following information:
  
  * **Single Sign-On Service URL** (in the `PassiveRequestorEndpoint` section)
  * **Single Logout Service URL** (in the `PassiveRequestorEndpoint` section, the same as the Single Sign-On Service URL)
- * **Validating X509 Certificates** (in the `X509Certificate` tags). This is only use if the **Validate Signature** 
+ * **Validating X509 Certificates** (in the `X509Certificate` tags). This is only used if the **Validate Signature** 
  option is set to on (which is recommended).
  
 The remaining options are:
@@ -120,7 +332,6 @@ In the `Settings` tab, the only important elements to set are:
 
 * the **SAML Assertion Token Format**, which specifies the type of token to use. Currently only SAML 1.1 and 2.0 tokens
 are supported.
-WS-Fed identity brokers. 
 * the **Valid Redirect URIs** parameter. For a Keyclock identity broker, this value MUST be set to the value of the 
 **Redirect URI** in the settings tab.
 
@@ -141,7 +352,7 @@ To get the information, the following mappers must be created in the client:
 **SAML Attribute Name** MUST be set to `name`.
 * A mapper for the email:  Should be of type `SAML User Property`. The **property** should be set to `email`. The 
 **SAML Attribute Name** MUST be set to `emailaddress`.
-* A mapper for the first name:  Should be of type `SAML User Property`. The **property** should be set to `firstName`. The 
-**SAML Attribute Name** MUST be set to `givenname`.
+* A mapper for the first name:  Should be of type `SAML User Property`. The **property** should be set to `firstName`. 
+The **SAML Attribute Name** MUST be set to `givenname`.
 * A mapper for the last name:  Should be of type `SAML User Property`. The **property** should be set to `lastName`. The 
 **SAML Attribute Name** MUST be set to `surname`.
