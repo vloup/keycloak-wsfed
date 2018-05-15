@@ -324,7 +324,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
-            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.FAILED_LOGOUT);
+            return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REDIRECT_URI);
         }
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();

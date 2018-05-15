@@ -259,7 +259,7 @@ public class WSFedLoginProtocolTest {
     public void testFrontchannelLogoutNoUrl() throws Exception {
         Response response = loginProtocol.frontchannelLogout(mockHelper.getUserSessionModel(), mockHelper.getClientSessionModel());
         assertNotNull(response);
-        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.FAILED_LOGOUT);
+        assertErrorPage(mockHelper.getLoginFormsProvider(), Messages.INVALID_REDIRECT_URI);
     }
 
     @Test
