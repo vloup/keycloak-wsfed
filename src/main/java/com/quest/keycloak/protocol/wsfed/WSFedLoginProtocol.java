@@ -35,6 +35,7 @@ import org.keycloak.events.EventBuilder;
 import org.keycloak.models.*;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
+import org.keycloak.protocol.saml.SamlProtocolUtils;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.managers.ClientSessionCode;
@@ -48,6 +49,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.xml.datatype.DatatypeConfigurationException;
 import java.io.InputStream;
 import java.security.KeyPair;
+import java.security.PublicKey;
 
 /**
  * Implementation of keycloak's LoginProtocol. The LoginProtocol is used during the authentication steps for login AND
@@ -184,6 +186,16 @@ public class WSFedLoginProtocol implements LoginProtocol {
                     .setSigningCertificate(activeKey.getCertificate())
                     .setSigningKeyPairId(activeKey.getKid());
 
+            if("true".equals(client.getAttribute("saml.encrypt"))){
+                PublicKey publicKey = null;
+                try {
+                    publicKey = SamlProtocolUtils.getEncryptionKey(client);
+                } catch (Exception e) {
+                    logger.error("failed", e);
+                    return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.FAILED_TO_PROCESS_RESPONSE);
+                }
+                builder.encrypt(publicKey);
+            }
             if (useJwt(client)) {
                 //JSON webtoken (OIDC) set in client config
                 WSFedOIDCAccessTokenBuilder oidcBuilder = new WSFedOIDCAccessTokenBuilder();

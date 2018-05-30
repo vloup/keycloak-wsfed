@@ -123,8 +123,9 @@ public class WSFedOIDCAccessTokenBuilder {
         return x5tIncluded;
     }
 
-    public void setX5tIncluded(boolean x5tIncluded) {
+    public WSFedOIDCAccessTokenBuilder setX5tIncluded(boolean x5tIncluded) {
         this.x5tIncluded = x5tIncluded;
+        return this;
     }
 
     protected class JWSBuilderExtended extends JWSBuilder {

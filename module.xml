@@ -22,5 +22,6 @@
         <module name="javax.api"/>
         <module name="org.apache.httpcomponents"/>
         <module name="org.apache.commons.lang"/>
+        <module name="org.apache.santuario.xmlsec"/>
     </dependencies>
 </module>

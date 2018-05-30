@@ -219,7 +219,7 @@
                 </div>
                 <kc-tooltip>{{:: 'canonicalization-method.tooltip' | translate}}</kc-tooltip>
             </div>
-            <div class="form-group clearfix block" data-ng-show="protocol == 'saml'">
+            <div class="form-group clearfix block" data-ng-show="protocol == 'saml' || protocol == 'wsfed'">
                 <label class="col-md-2 control-label" for="samlEncrypt">{{:: 'encrypt-assertions' | translate}}</label>
                 <div class="col-sm-6">
                     <input ng-model="samlEncrypt" ng-click="switchChange()" name="samlEncrypt" id="samlEncrypt" onoffswitch on-text="{{:: 'onText' | translate}}" off-text="{{:: 'offText' | translate}}"/>
