@@ -10,8 +10,8 @@ currently supported. However, in its current capacity the WS-Fed protocol can be
 * Keycloak clients (WS Resources), with Keycloak acting as an IdP/STS.
 * Other IdPs, with Keycloak acting as an Identity Broker.
 
-The WS-Fed protocol does not specify the format of the tokens, but this module supports SAML 2.0, SAML 1.1 and JWT 
-tokens for its operations. 
+The WS-Fed protocol does not specify the format of the tokens, but this module supports SAML 2.0 and SAML 1.1 tokens 
+for its operations. 
 
 This module is currently working on 3.4.3.Final (check tags for compatibility with previous keycloak versions)
 
@@ -91,11 +91,10 @@ The values **Name**, **Description**, **Enabled**, **Consent required** and **Cl
 parameters for clients as described in the 
 [Keycloak documentation for SAML clients](https://www.keycloak.org/docs/latest/server_admin/index.html#saml-clients). 
 
-The following set of options are protocol specific: The option **Send JWT instead of SAML** determines if a JWT token 
-or SAML is used. If a JWT token is used, the option **Include x5t in header** is available. If a SAML token is used, the 
-**SAML Assertion Token Format** option allows the use of `SAML 1.1` or `SAML 2.0` tokens. The **Front Channel Logout**
-option determines if the logout requires a browser redirect to the client (for `true`) or if the server performs a 
-background invocation (for`false`).
+The following set of options are protocol specific: the **SAML Assertion Token Format** option allows the use of 
+`SAML 1.1` or `SAML 2.0` tokens. The **Front Channel Logout** option determines if the logout requires a browser redirect 
+to the client (for `true`) or if the server performs a background invocation (for`false`). The **Encrypt Assertions** 
+option allows the SAML Assertion to be encrypted with the client's public key.
 
 The last set of options concern the URIs of the client. The values **Root URL**, **Valid Redirect URIs** and **Base 
 URL** are the same as those described in the 
@@ -104,12 +103,9 @@ URL** are the same as those described in the
 ##### Mappers tab
 
 Mappers are generally handled in the same way as described as described in the 
-[keycloak documentation on mappers](https://www.keycloak.org/docs/latest/server_admin/index.html#_protocol-mappers). The
-difference is that there are two sets of mappers, **SAML mappers** and **OIDC mappers**. **SAML mappers** should be used
-if a SAML token is used, and OIDC mappers should be used if a **JWT token** is used. Doing the contrary will not cause 
-an error, but the mapper will be ignored.
+[keycloak documentation on mappers](https://www.keycloak.org/docs/latest/server_admin/index.html#_protocol-mappers).
 
-Mappers are equivalent to those from the SAML and OIDC clients, however, there is an extra mapper present
+Mappers are equivalent to those from the SAML client, however, there is an extra mapper present
 in the WS-Fed SAML mappers: a `SAML javascript mapper`. It's use is almost analog to the OIDC script mapper: 
 the [nashorn javascript engine](https://docs.oracle.com/javase/10/nashorn/introduction.htm#JSNUG136) is used to 
 evaluate the input script, and the last statement is the value that will be returned in the SAML attribute. The 
