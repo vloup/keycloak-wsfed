@@ -22,8 +22,10 @@ import com.quest.keycloak.protocol.wsfed.sig.SAML11Signature;
 import com.quest.keycloak.protocol.wsfed.sig.SAML2SignatureProxy;
 import com.quest.keycloak.protocol.wsfed.sig.SAMLAbstractSignature;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.xml.security.keys.KeyInfo;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
+import org.keycloak.saml.RandomSecret;
 import org.keycloak.saml.SignatureAlgorithm;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
 import org.keycloak.saml.common.exceptions.ProcessingException;
@@ -32,6 +34,7 @@ import org.keycloak.saml.processing.core.saml.v1.SAML11Constants;
 import org.keycloak.saml.processing.core.saml.v2.common.IDGenerator;
 import org.keycloak.saml.processing.core.saml.v2.util.AssertionUtil;
 import org.keycloak.saml.processing.core.saml.v2.util.XMLTimeUtil;
+import org.keycloak.saml.processing.core.util.XMLEncryptionUtil;
 import org.picketlink.identity.federation.core.wstrust.wrappers.Lifetime;
 import org.picketlink.identity.federation.core.wstrust.wrappers.RequestSecurityTokenResponse;
 import org.picketlink.identity.federation.core.wstrust.wrappers.RequestSecurityTokenResponseCollection;
@@ -47,6 +50,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.Response;
 import javax.xml.crypto.dsig.CanonicalizationMethod;
@@ -55,6 +60,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.security.KeyPair;
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 
 /**
@@ -72,6 +78,11 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
     protected X509Certificate signingCertificate;
     protected String keyId;
     protected String canonicalizationMethodType = CanonicalizationMethod.EXCLUSIVE;
+
+    protected int encryptionKeySize = 128;
+    protected PublicKey encryptionPublicKey;
+    protected String encryptionAlgorithm = "AES";
+    protected boolean encrypt;
 
     public RequestSecurityTokenResponseBuilder() {
         setMethod(HttpMethod.POST);
@@ -154,6 +165,39 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
         return this;
     }
 
+    public boolean isEncrypt() {
+        return encrypt;
+    }
+
+    public RequestSecurityTokenResponseBuilder encrypt(PublicKey encryptionPublicKey) {
+        this.encrypt = true;
+        this.encryptionPublicKey = encryptionPublicKey;
+        return this;
+    }
+
+
+    public int getEncryptionKeySize() {
+        return encryptionKeySize;
+    }
+
+    public RequestSecurityTokenResponseBuilder encryptionKeySize(int encryptionKeySize) {
+        this.encryptionKeySize = encryptionKeySize;
+        return this;
+    }
+
+    public PublicKey getEncryptionPublicKey() {
+        return encryptionPublicKey;
+    }
+
+    public String encryptionAlgorithm() {
+        return encryptionAlgorithm;
+    }
+
+    public RequestSecurityTokenResponseBuilder encryptionAlgorithm(String encryptionAlgorithm) {
+        this.encryptionAlgorithm = encryptionAlgorithm;
+        return this;
+    }
+
     @Override
     public RequestSecurityTokenResponseBuilder setDestination(String destination) {
         super.setDestination(destination);
@@ -203,7 +247,9 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
             //Sign token
             Document doc = AssertionUtil.asDocument(samlToken);
             doc = signAssertion(doc, new SAML2SignatureProxy());
-
+            if(encrypt){
+                doc=encryptDocument(doc);
+            }
             response.getRequestedSecurityToken().add(doc.getDocumentElement());
 
             response.setRequestedUnattachedReference(new RequestedReferenceType());
@@ -229,7 +275,9 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
             //Sign token
             Document doc = com.quest.keycloak.saml.processing.core.saml.v2.util.AssertionUtil.asDocument(saml11Token);
             doc = signAssertion(doc, new SAML11Signature());
-
+            if(encrypt){
+                doc=encryptDocument(doc);
+            }
             response.getRequestedSecurityToken().add(doc.getDocumentElement());
             response.setTokenType(URI.create(SAML11Constants.ASSERTION_11_NSURI));
         }
@@ -295,5 +343,22 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
         coll.addRequestSecurityTokenResponse(response);
         writer.write(coll);
         return new String(bos.toByteArray());
+    }
+
+    public Document encryptDocument(Document samlDocument) throws ProcessingException {
+        try {
+            byte[] secret = RandomSecret.createRandomSecret(encryptionKeySize / 8);
+            SecretKey secretKey = new SecretKeySpec(secret, encryptionAlgorithm);
+            // encrypt the Assertion element and replace it with a EncryptedAssertion element.
+            XMLEncryptionUtil.encryptElement(samlDocument, samlDocument.getDocumentElement(),encryptionPublicKey,
+                    secretKey, encryptionKeySize);
+            //add keyinfo to the generated EncryptedKey within the encrypted assertion
+            KeyInfo keyInfo=new KeyInfo(samlDocument);
+            keyInfo.add(encryptionPublicKey);
+            samlDocument.getElementsByTagName("xenc:EncryptedKey").item(0).appendChild(keyInfo.getElement().cloneNode(true));
+            return samlDocument;
+        } catch (Exception e) {
+            throw new ProcessingException("failed to encrypt", e);
+        }
     }
 }
