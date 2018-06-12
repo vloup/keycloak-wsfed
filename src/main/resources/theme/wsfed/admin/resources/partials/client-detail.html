@@ -118,7 +118,7 @@
                 </div>
             </div>
 
-            <div class="form-group clearfix block" data-ng-show="protocol == 'wsfed'">
+            <!--<div class="form-group clearfix block" data-ng-show="protocol == 'wsfed'">
                 <label class="col-md-2 control-label" for="wsfedJwt">Send JWT instead of SAML</label>
                 <div class="col-sm-6">
                     <input ng-model="wsfedJwt" ng-click="switchChange()" name="wsfedJwt" id="wsfedJwt" onoffswitch/>
@@ -132,7 +132,8 @@
                 </div>
                 <kc-tooltip>Should the response contain the x5t header?</kc-tooltip>
             </div>
-            <div class="form-group" data-ng-show="protocol == 'wsfed' && !wsfedJwt">
+            <div class="form-group" data-ng-show="protocol == 'wsfed' && !wsfedJwt">-->
+            <div class="form-group" data-ng-show="protocol == 'wsfed'">
                 <label class="col-md-2 control-label" for="wsfedSamlAssertionTokenFormat">SAML Assertion Token Format</label>
                 <div class="col-sm-6">
                     <div>

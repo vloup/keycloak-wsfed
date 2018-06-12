@@ -16,10 +16,6 @@
 
 package com.quest.keycloak.protocol.wsfed;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.stream.Collectors;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HttpMethod;
@@ -35,7 +31,6 @@ import com.quest.keycloak.common.wsfed.builders.WSFedResponseBuilder;
 import com.quest.keycloak.protocol.wsfed.builders.WSFedProtocolParameters;
 import com.quest.keycloak.protocol.wsfed.installation.WSFedIDPDescriptorClientInstallation;
 import org.jboss.logging.Logger;
-import org.keycloak.common.util.PemUtils;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
@@ -80,7 +75,8 @@ public class WSFedService extends AuthorizationEndpointBase {
     /**
      * Method called in case of a GET. Current supports only SIGNIN and SIGNOUT (cleanup handled as signout).
      * WS-Fed protocol makes no difference between GET and POST for these steps.
-     * TODO no idea why this method is called "redirectBinding", rename?
+     *
+     * Used if the client uses a 302 to send its message to keycloak
      */
     @GET
     public Response redirectBinding() {
@@ -131,8 +127,11 @@ public class WSFedService extends AuthorizationEndpointBase {
         AuthenticationManager.AuthResult authResult = authenticateIdentityCookie();
 
         try {
+            event.event(EventType.LOGIN);
             checkSsl();
+            event.event(EventType.LOGIN_ERROR);
             checkRealm();
+            event.event(null);
         } catch (ErrorPageException e) {
             return e.getResponse();
         }
