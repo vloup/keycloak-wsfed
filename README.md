@@ -100,6 +100,12 @@ The last set of options concern the URIs of the client. The values **Root URL**,
 URL** are the same as those described in the 
 [Keycloak documentation for SAML clients](https://www.keycloak.org/docs/latest/server_admin/index.html#saml-clients).
 
+##### SAML Keys tab
+
+This tab is only available if the **Encrypt Assertions** setting was enabled in the Settings tab. As with the SAML
+client, it is possible to generate and export a keypair, or to import a certificate from a JKS file, PKSC12 file or a 
+PEM certificate file. However, the imported certificate MUST be RSA, or there will be an error during runtime.
+
 ##### Mappers tab
 
 Mappers are generally handled in the same way as described as described in the 

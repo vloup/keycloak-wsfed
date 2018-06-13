@@ -345,6 +345,14 @@ public class RequestSecurityTokenResponseBuilder extends WSFedResponseBuilder {
         return new String(bos.toByteArray());
     }
 
+    /**
+     * Encrypts a SAML assertion. All XML passed in the samlDocument parameter will be encrypted, and the keyinfo is
+     * added to the resulting document.
+     *
+     * @param samlDocument The SAML assertion to encrypt
+     * @return an encrypted document
+     * @throws ProcessingException
+     */
     public Document encryptDocument(Document samlDocument) throws ProcessingException {
         try {
             byte[] secret = RandomSecret.createRandomSecret(encryptionKeySize / 8);
