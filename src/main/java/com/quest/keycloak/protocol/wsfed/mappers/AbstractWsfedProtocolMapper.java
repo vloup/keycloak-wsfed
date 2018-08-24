@@ -26,6 +26,7 @@ public abstract class AbstractWsfedProtocolMapper implements ProtocolMapper {
     public static final String TOKEN_MAPPER_CATEGORY = "OIDC Token mapper";
     public static final String ATTRIBUTE_STATEMENT_CATEGORY = "SAML AttributeStatement Mapper";
     public static final String SAML_ROLE_MAPPER = "SAML Role Mapper";
+    public static final String SAML11_NAMESPACE_MAPPER = "SAML 1.1 Namespace Mapper";
 
     @Override
     public String getProtocol() {

@@ -18,6 +18,7 @@
 
 package com.quest.keycloak.protocol.wsfed.builders;
 
+import com.quest.keycloak.protocol.wsfed.mappers.SAMLAttributeNamespaceMapper;
 import org.jboss.logging.Logger;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v1.assertion.SAML11AttributeStatementType;
@@ -34,6 +35,7 @@ import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.saml.SamlProtocol;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLAttributeStatementMapper;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLRoleListMapper;
+import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
 
@@ -114,6 +116,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
 
         List<SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper>> attributeStatementMappers = new LinkedList<>();
         SamlProtocol.ProtocolMapperProcessor<WSFedSAMLRoleListMapper> roleListMapper = null;
+        SamlProtocol.ProtocolMapperProcessor<SAMLAttributeNamespaceMapper> namespaceMapper = null;
 
         Set<ProtocolMapperModel> mappings = accessCode.getRequestedProtocolMappers();
         for (ProtocolMapperModel mapping : mappings) {
@@ -126,15 +129,19 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             if (mapper instanceof WSFedSAMLRoleListMapper) {
                 roleListMapper = new SamlProtocol.ProtocolMapperProcessor<>((WSFedSAMLRoleListMapper)mapper, mapping);
             }
+            if (mapper instanceof SAMLAttributeNamespaceMapper) {
+                namespaceMapper = new SamlProtocol.ProtocolMapperProcessor<>((SAMLAttributeNamespaceMapper)mapper, mapping);
+            }
         }
 
-        transformAttributeStatement(attributeStatementMappers, assertion, session, userSession, clientSession);
-        populateRoles(roleListMapper, assertion, session, userSession, clientSession);
+        transformAttributeStatement(attributeStatementMappers, namespaceMapper, assertion, session, userSession, clientSession);
+        populateRoles(roleListMapper, namespaceMapper, assertion, session, userSession, clientSession);
 
         return assertion;
     }
 
     private void populateRoles(SamlProtocol.ProtocolMapperProcessor<WSFedSAMLRoleListMapper> roleListMapper,
+                               SamlProtocol.ProtocolMapperProcessor<SAMLAttributeNamespaceMapper> namespaceMapper,
                                SAML11AssertionType assertion,
                                KeycloakSession session,
                                UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
@@ -154,7 +161,13 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
 
             // Change the role attribute name to lowercase, i.e. "Role" becomes "role"
-            SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(ATTRIBUTE_NAMESPACE));
+            SAML11AttributeType samlAttribute = null;
+            if (namespaceMapper != null) {
+                String namespace = namespaceMapper.model.getConfig().getOrDefault(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, ATTRIBUTE_NAMESPACE);
+                samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(namespace));
+            } else {
+                samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(ATTRIBUTE_NAMESPACE));
+            }
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {
                     samlAttribute.add(attributeValue.toString());
@@ -206,6 +219,7 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
      * @param clientSession The current client session
      */
     private void transformAttributeStatement(List<SamlProtocol.ProtocolMapperProcessor<WSFedSAMLAttributeStatementMapper>> attributeStatementMappers,
+                                             SamlProtocol.ProtocolMapperProcessor<SAMLAttributeNamespaceMapper> namespaceMapper,
                                             SAML11AssertionType assertion,
                                             KeycloakSession session,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
@@ -220,7 +234,13 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         SAML11AttributeArrayMapper samlAttributeMapper = new SAML11AttributeArrayMapper(attributeStatement);
         samlAttributeMapper.mapAttributes(tempAttributeStatement, attribute -> {
             // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
-            SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(ATTRIBUTE_NAMESPACE));
+            SAML11AttributeType samlAttribute = null;
+            if (namespaceMapper != null) {
+                String namespace = namespaceMapper.model.getConfig().getOrDefault(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, ATTRIBUTE_NAMESPACE);
+                samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(namespace));
+            } else {
+                samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(ATTRIBUTE_NAMESPACE));
+            }
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {
                     samlAttribute.add(attributeValue.toString());
