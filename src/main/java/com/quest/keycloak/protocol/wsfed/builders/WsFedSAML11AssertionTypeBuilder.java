@@ -164,9 +164,16 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             SAML11AttributeType samlAttribute = null;
             if (namespaceMapper != null) {
                 String namespace = namespaceMapper.model.getConfig().getOrDefault(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, ATTRIBUTE_NAMESPACE);
+                if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                    namespace = attribute.getFriendlyName();
+                }
                 samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(namespace));
             } else {
-                samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(ATTRIBUTE_NAMESPACE));
+                String namespace = ATTRIBUTE_NAMESPACE;
+                if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                    namespace = attribute.getFriendlyName();
+                }
+                samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(namespace));
             }
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {
@@ -237,9 +244,16 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             SAML11AttributeType samlAttribute = null;
             if (namespaceMapper != null) {
                 String namespace = namespaceMapper.model.getConfig().getOrDefault(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, ATTRIBUTE_NAMESPACE);
+                if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                    namespace = attribute.getFriendlyName();
+                }
                 samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(namespace));
             } else {
-                samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(ATTRIBUTE_NAMESPACE));
+                String namespace = ATTRIBUTE_NAMESPACE;
+                if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                    namespace = attribute.getFriendlyName();
+                }
+                samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(namespace));
             }
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {

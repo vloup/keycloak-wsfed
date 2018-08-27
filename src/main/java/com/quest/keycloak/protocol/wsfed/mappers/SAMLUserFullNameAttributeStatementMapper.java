@@ -26,6 +26,7 @@ import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -41,6 +42,16 @@ public class SAMLUserFullNameAttributeStatementMapper extends AbstractWsfedProto
 
     static {
         AttributeStatementHelper.setConfigProperties(configProperties);
+        ProviderConfigProperty property = null;
+        Iterator<ProviderConfigProperty> iter = configProperties.iterator();
+        while (iter.hasNext()) {
+            property = iter.next();
+            if (property.getName().equals(AttributeStatementHelper.FRIENDLY_NAME)) {
+                property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL + "/ Namespace");
+                property.setHelpText(FRIENDLY_NAMESPACE_HELP_TEXT);
+                break;
+            }
+        }
     }
 
     @Override

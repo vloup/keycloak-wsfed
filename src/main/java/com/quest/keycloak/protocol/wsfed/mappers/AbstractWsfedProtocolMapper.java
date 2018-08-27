@@ -27,6 +27,7 @@ public abstract class AbstractWsfedProtocolMapper implements ProtocolMapper {
     public static final String ATTRIBUTE_STATEMENT_CATEGORY = "SAML AttributeStatement Mapper";
     public static final String SAML_ROLE_MAPPER = "SAML Role Mapper";
     public static final String SAML11_NAMESPACE_MAPPER = "SAML 1.1 Namespace Mapper";
+    public static final String FRIENDLY_NAMESPACE_HELP_TEXT = "SAML 2.0: This field is used for the friendly name; SAML 1.1: This field is used for the attribute namespace";
 
     @Override
     public String getProtocol() {

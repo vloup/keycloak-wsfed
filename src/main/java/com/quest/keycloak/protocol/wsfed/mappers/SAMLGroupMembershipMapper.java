@@ -3,10 +3,12 @@ package com.quest.keycloak.protocol.wsfed.mappers;
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
 import org.keycloak.models.*;
+import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.protocol.saml.mappers.GroupMembershipMapper;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -25,6 +27,16 @@ public class SAMLGroupMembershipMapper extends AbstractWsfedProtocolMapper imple
     static {
         mapper = new GroupMembershipMapper();
         configProperties.addAll(mapper.getConfigProperties());
+        ProviderConfigProperty property = null;
+        Iterator<ProviderConfigProperty> iter = configProperties.iterator();
+        while (iter.hasNext()) {
+            property = iter.next();
+            if (property.getName().equals(AttributeStatementHelper.FRIENDLY_NAME)) {
+                property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL + "/ Namespace");
+                property.setHelpText(FRIENDLY_NAMESPACE_HELP_TEXT);
+                break;
+            }
+        }
     }
 
     @Override

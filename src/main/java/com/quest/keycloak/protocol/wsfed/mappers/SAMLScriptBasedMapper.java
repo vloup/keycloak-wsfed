@@ -72,6 +72,15 @@ public class SAMLScriptBasedMapper extends AbstractWsfedProtocolMapper implement
         property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL);
         property.setHelpText(AttributeStatementHelper.FRIENDLY_NAME_HELP_TEXT);
         configProperties.add(property);
+        Iterator<ProviderConfigProperty> iter = configProperties.iterator();
+        while (iter.hasNext()) {
+            property = iter.next();
+            if (property.getName().equals(AttributeStatementHelper.FRIENDLY_NAME)) {
+                property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL + "/ Namespace");
+                property.setHelpText(FRIENDLY_NAMESPACE_HELP_TEXT);
+                break;
+            }
+        }
         property = new ProviderConfigProperty();
         property.setName(AttributeStatementHelper.SAML_ATTRIBUTE_NAMEFORMAT);
         property.setLabel("SAML Attribute NameFormat");
