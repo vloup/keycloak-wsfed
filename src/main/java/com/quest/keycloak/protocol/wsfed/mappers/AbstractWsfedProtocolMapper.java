@@ -21,6 +21,11 @@ import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.protocol.ProtocolMapper;
+import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
+import org.keycloak.provider.ProviderConfigProperty;
+
+import java.util.Iterator;
+import java.util.List;
 
 public abstract class AbstractWsfedProtocolMapper implements ProtocolMapper {
     public static final String TOKEN_MAPPER_CATEGORY = "OIDC Token mapper";
@@ -51,5 +56,31 @@ public abstract class AbstractWsfedProtocolMapper implements ProtocolMapper {
     @Override
     public void postInit(KeycloakSessionFactory factory) {
 
+    }
+
+    /**
+     * This method is used to add details to the FriendlyName property used in WsFed SAML Mappers. It is mainly used
+     * when a Keycloak provided Mapper is used to configure the properties of a custom mapper so as to avoid duplicating
+     * code provided by Keycloak.
+     *
+     * The details that are added are " / Namespace" to the label as well as replacing the help text detailing
+     * that in SAML 2.0 Tokens FriendlyName is still used normally and in SAML 1.1 Tokens it is used to define the attribute
+     * namespace to be used.
+     *
+     * @param properties The list of ProviderConfigProperty objects already configured by a Keycloak provided Mapper
+     */
+    static void addNamespaceToFriendlyProperty(List<ProviderConfigProperty> properties) {
+        ProviderConfigProperty property = null;
+        Iterator<ProviderConfigProperty> iter = properties.iterator();
+        // Iterate until we find the property with the FriendlyName, could break if Keycloak Mappers stop using
+        // AttributeStatementHelper.FriendlyName
+        while (iter.hasNext()) {
+            property = iter.next();
+            if (property.getName().equals(AttributeStatementHelper.FRIENDLY_NAME)) {
+                property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL + "/ Namespace");
+                property.setHelpText(FRIENDLY_NAMESPACE_HELP_TEXT);
+                break;
+            }
+        }
     }
 }

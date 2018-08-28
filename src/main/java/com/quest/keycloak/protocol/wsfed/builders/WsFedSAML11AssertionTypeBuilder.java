@@ -242,6 +242,8 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         samlAttributeMapper.mapAttributes(tempAttributeStatement, attribute -> {
             // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
             SAML11AttributeType samlAttribute = null;
+            // If a SAMLAttributeNamespaceMapper has been defined we use it to set the Attribute namespace unless a more
+            // specific namespace has been set in the friendlyName property
             if (namespaceMapper != null) {
                 String namespace = namespaceMapper.model.getConfig().getOrDefault(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, ATTRIBUTE_NAMESPACE);
                 if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {

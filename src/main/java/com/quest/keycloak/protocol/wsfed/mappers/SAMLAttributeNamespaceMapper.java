@@ -1,12 +1,7 @@
 package com.quest.keycloak.protocol.wsfed.mappers;
 
-import com.quest.keycloak.broker.wsfed.mappers.UserAttributeMapper;
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
-import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
-import org.keycloak.models.AuthenticatedClientSessionModel;
-import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
-import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.provider.ProviderConfigProperty;
 
@@ -15,6 +10,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This class handles the mapping of a namespace to attributes for the WSFed protocol. The namespace is only for
+ * SAML 1.1 Tokens. The namespace defined with this mapper is then used globally for all attributes. To define the
+ * namespace more specifically for each attribute use the FriendlyName property defined in the other mappers for SAML
+ * defined in this Module, this only works for SAML 1.1 Tokens.
+ *
+ * @author OMC
+ */
 public class SAMLAttributeNamespaceMapper extends AbstractWsfedProtocolMapper {
 
     public static final String PROVIDER_ID = "wsfed-saml-attribute-namespace-mapper";

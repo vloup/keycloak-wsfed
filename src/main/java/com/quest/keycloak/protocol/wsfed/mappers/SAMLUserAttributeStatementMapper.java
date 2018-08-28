@@ -23,13 +23,11 @@ import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
-import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.protocol.saml.mappers.UserAttributeStatementMapper;
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -46,16 +44,7 @@ public class SAMLUserAttributeStatementMapper extends AbstractWsfedProtocolMappe
     static {
         UserAttributeStatementMapper mapper = new UserAttributeStatementMapper();
         configProperties.addAll(mapper.getConfigProperties());
-        ProviderConfigProperty property = null;
-        Iterator<ProviderConfigProperty> iter = configProperties.iterator();
-        while (iter.hasNext()) {
-            property = iter.next();
-            if (property.getName().equals(AttributeStatementHelper.FRIENDLY_NAME)) {
-                property.setLabel(AttributeStatementHelper.FRIENDLY_NAME_LABEL + "/ Namespace");
-                property.setHelpText(FRIENDLY_NAMESPACE_HELP_TEXT);
-                break;
-            }
-        }
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     @Override
