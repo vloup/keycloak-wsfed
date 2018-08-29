@@ -34,6 +34,7 @@ import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.saml.SamlProtocol;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLAttributeStatementMapper;
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedSAMLRoleListMapper;
+import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
 import org.keycloak.saml.common.exceptions.ConfigurationException;
 
@@ -154,7 +155,13 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
             // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
 
             // Change the role attribute name to lowercase, i.e. "Role" becomes "role"
-            SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(ATTRIBUTE_NAMESPACE));
+            SAML11AttributeType samlAttribute = null;
+            String namespace = ATTRIBUTE_NAMESPACE;
+            if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                namespace = attribute.getFriendlyName();
+            }
+            samlAttribute = new SAML11AttributeType(attribute.getName().toLowerCase(), URI.create(namespace));
+
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {
                     samlAttribute.add(attributeValue.toString());
@@ -220,7 +227,13 @@ public class WsFedSAML11AssertionTypeBuilder extends WsFedSAMLAssertionTypeAbstr
         SAML11AttributeArrayMapper samlAttributeMapper = new SAML11AttributeArrayMapper(attributeStatement);
         samlAttributeMapper.mapAttributes(tempAttributeStatement, attribute -> {
             // TODO what is there to do with SAML2 attribute name format? Should be set to attributeNameSpace, but value to use is unclear
-            SAML11AttributeType samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(ATTRIBUTE_NAMESPACE));
+            SAML11AttributeType samlAttribute = null;
+            String namespace = ATTRIBUTE_NAMESPACE;
+            if (attribute.getFriendlyName() != null && !attribute.getFriendlyName().isEmpty()) {
+                namespace = attribute.getFriendlyName();
+            }
+            samlAttribute = new SAML11AttributeType(attribute.getName(), URI.create(namespace));
+
             if (!attribute.getAttributeValue().isEmpty()) {
                 for (Object attributeValue : attribute.getAttributeValue()) {
                     samlAttribute.add(attributeValue.toString());

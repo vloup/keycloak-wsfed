@@ -40,6 +40,7 @@ public class SAMLRoleListMapper extends AbstractWsfedProtocolMapper implements W
     static {
         RoleListMapper mapper = new RoleListMapper();
         configProperties.addAll(mapper.getConfigProperties());
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     @Override

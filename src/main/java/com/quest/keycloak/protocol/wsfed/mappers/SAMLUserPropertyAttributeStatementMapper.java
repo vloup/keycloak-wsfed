@@ -34,6 +34,7 @@ public class SAMLUserPropertyAttributeStatementMapper extends AbstractWsfedProto
     static {
         UserPropertyAttributeStatementMapper mapper = new UserPropertyAttributeStatementMapper();
         configProperties.addAll(mapper.getConfigProperties());
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     public static final String PROVIDER_ID = "wsfed-saml-user-property-mapper";

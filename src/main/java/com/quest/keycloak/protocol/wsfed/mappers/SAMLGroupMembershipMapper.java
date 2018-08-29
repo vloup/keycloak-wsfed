@@ -25,6 +25,7 @@ public class SAMLGroupMembershipMapper extends AbstractWsfedProtocolMapper imple
     static {
         mapper = new GroupMembershipMapper();
         configProperties.addAll(mapper.getConfigProperties());
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     @Override

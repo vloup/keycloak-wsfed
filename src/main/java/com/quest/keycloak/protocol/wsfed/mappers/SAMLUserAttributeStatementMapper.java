@@ -44,6 +44,7 @@ public class SAMLUserAttributeStatementMapper extends AbstractWsfedProtocolMappe
     static {
         UserAttributeStatementMapper mapper = new UserAttributeStatementMapper();
         configProperties.addAll(mapper.getConfigProperties());
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     @Override

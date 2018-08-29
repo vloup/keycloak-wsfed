@@ -146,6 +146,44 @@ public class WsFedSAML11AssertionTypeBuilderTest {
     }
 
     @Test
+    public  void testSAMLTokenGenerationRoleWithNamespaceInFriendlyName() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLRoleListMapper roleMapper = new SAMLRoleListMapper();
+
+        ProtocolMapperModel attributeRoles = SAMLRoleListMapper.create("Role mapper joined","Role", "basic", "testClaimsNamespace", true);
+        attributeRoles.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeRoles, roleMapper);
+
+        mockHelper.initializeMockValues();
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+        assertEquals(1, attributesStatements.get().size());
+        SAML11AttributeType attribute = attributesStatements.get().get(0);
+        assertEquals("role", attribute.getAttributeName());
+
+        assertEquals(URI.create("testClaimsNamespace"), attribute.getAttributeNamespace());
+
+        List<?> attributeValues = attribute.get();
+        assertTrue(attributeValues.contains("role1"));
+        assertTrue(attributeValues.contains("role2"));
+        assertTrue(attributeValues.contains("role3"));
+        assertTrue(attributeValues.contains("role4"));
+    }
+
+    @Test
     public void testSAMLTokenGenerationAttributeMapping() throws ConfigurationException {
         mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
 
@@ -180,6 +218,55 @@ public class WsFedSAML11AssertionTypeBuilderTest {
 
         assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
         SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+
+        List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
+                attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());
+
+        assertTrue(attributeValues.contains("aGroup"));
+        assertTrue(attributeValues.contains("first.last@somedomain.com"));
+        assertTrue(attributeValues.contains("username"));
+    }
+
+    @Test
+    public void testSAMLTokenGenerationAttributeMappingWithNamespaceInFriendlyName() throws ConfigurationException {
+        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
+
+        WSFedSAMLAttributeStatementMapper userMapper = new SAMLUserPropertyAttributeStatementMapper();
+        WSFedSAMLAttributeStatementMapper attributeMapper = new SAMLUserAttributeStatementMapper();
+
+        ProtocolMapperModel attributeEmail = SAMLUserPropertyAttributeStatementMapper.createAttributeMapper("SamlEmail", "email", "e-mail", "basic", "testClaimsNamespace", false, null);
+        attributeEmail.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeEmail, userMapper);
+
+        ProtocolMapperModel attributeUsername = SAMLUserPropertyAttributeStatementMapper.createAttributeMapper("SamlUsername", "username", "upn", "basic", "testClaimsNamespace", false, null);
+        attributeUsername.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeUsername, userMapper);
+
+        ProtocolMapperModel attributeMemberOf = SAMLUserAttributeStatementMapper.createAttributeMapper("SamlMemberOf", "memberOf", "memberOf", "basic", "testClaimsNamespace", false, null);
+        attributeMemberOf.setId(UUID.randomUUID().toString());
+        mockHelper.getProtocolMappers().put(attributeMemberOf, attributeMapper);
+
+        mockHelper.initializeMockValues();
+        when(mockHelper.getUser().getAttribute("memberOf")).thenReturn(Collections.singletonList("aGroup"));
+
+        //SAML Token generation
+        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
+        samlBuilder.setRealm(mockHelper.getRealm())
+                .setUriInfo(mockHelper.getUriInfo())
+                .setAccessCode(mockHelper.getAccessCode())
+                .setClientSession(mockHelper.getClientSessionModel())
+                .setUserSession(mockHelper.getUserSessionModel())
+                .setSession(mockHelper.getSession());
+
+        SAML11AssertionType token = samlBuilder.build();
+
+        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
+        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
+
+        List<SAML11AttributeType> attributes = attributesStatements.get();
+        for(SAML11AttributeType attr : attributes) {
+            assertEquals(URI.create("testClaimsNamespace"), attr.getAttributeNamespace());
+        }
 
         List<String> attributeValues = attributesStatements.get().stream().flatMap(attributeList ->
                 attributeList.get().stream().map(attributeValue -> (String)attributeValue)).collect(Collectors.toList());

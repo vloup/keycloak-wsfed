@@ -41,6 +41,7 @@ public class SAMLUserFullNameAttributeStatementMapper extends AbstractWsfedProto
 
     static {
         AttributeStatementHelper.setConfigProperties(configProperties);
+        addNamespaceToFriendlyProperty(configProperties);
     }
 
     @Override
