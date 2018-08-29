@@ -146,49 +146,6 @@ public class WsFedSAML11AssertionTypeBuilderTest {
     }
 
     @Test
-    public  void testSAMLTokenGenerationNamespaceMapping() throws ConfigurationException {
-        mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
-
-        SAMLAttributeNamespaceMapper namespaceMapper = new SAMLAttributeNamespaceMapper();
-        WSFedSAMLRoleListMapper roleMapper = new SAMLRoleListMapper();
-
-        ProtocolMapperModel attributeRoles = SAMLRoleListMapper.create("Role mapper joined","Role", "basic", null, true);
-        attributeRoles.setId(UUID.randomUUID().toString());
-        mockHelper.getProtocolMappers().put(attributeRoles, roleMapper);
-
-        ProtocolMapperModel attributesNamespace = SAMLAttributeNamespaceMapper.create("Namespace mapper", "testNamespace", "Test Namespace");
-        attributesNamespace.setId(UUID.randomUUID().toString());
-        mockHelper.getProtocolMappers().put(attributesNamespace, namespaceMapper);
-
-        mockHelper.initializeMockValues();
-
-        //SAML Token generation
-        WsFedSAML11AssertionTypeBuilder samlBuilder = new WsFedSAML11AssertionTypeBuilder();
-        samlBuilder.setRealm(mockHelper.getRealm())
-                .setUriInfo(mockHelper.getUriInfo())
-                .setAccessCode(mockHelper.getAccessCode())
-                .setClientSession(mockHelper.getClientSessionModel())
-                .setUserSession(mockHelper.getUserSessionModel())
-                .setSession(mockHelper.getSession());
-
-        SAML11AssertionType token = samlBuilder.build();
-
-        assertTrue(token.getStatements().get(0) instanceof SAML11AttributeStatementType);
-        SAML11AttributeStatementType attributesStatements = (SAML11AttributeStatementType)token.getStatements().get(0);
-        assertEquals(1, attributesStatements.get().size());
-        SAML11AttributeType attribute = attributesStatements.get().get(0);
-        assertEquals("role", attribute.getAttributeName());
-
-        assertEquals(URI.create("testNamespace"), attribute.getAttributeNamespace());
-
-        List<?> attributeValues = attribute.get();
-        assertTrue(attributeValues.contains("role1"));
-        assertTrue(attributeValues.contains("role2"));
-        assertTrue(attributeValues.contains("role3"));
-        assertTrue(attributeValues.contains("role4"));
-    }
-
-    @Test
     public  void testSAMLTokenGenerationRoleWithNamespaceInFriendlyName() throws ConfigurationException {
         mockHelper.getClientSessionNotes().put(GeneralConstants.NAMEID_FORMAT, JBossSAMLURIConstants.NAMEID_FORMAT_UNSPECIFIED.get());
 
