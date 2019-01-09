@@ -24,6 +24,7 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.services.util.DefaultClientSessionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,14 +67,14 @@ public class OIDCFullNameMapper extends AbstractWsfedProtocolMapper implements W
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         FullNameMapper mapper = new FullNameMapper();
-        return mapper.transformAccessToken(token, mappingModel, session, userSession, clientSession);
+        return mapper.transformAccessToken(token, mappingModel, session, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
     }
 
     public static ProtocolMapperModel create(String name,
-                                             boolean consentRequired, String consentText,
+                                             boolean consentRequired,
                                              boolean accessToken, boolean idToken) {
 
-        ProtocolMapperModel mapper = FullNameMapper.create(name, consentRequired, consentText, accessToken, idToken);
+        ProtocolMapperModel mapper = FullNameMapper.create(name, accessToken, idToken, consentRequired);
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(WSFedLoginProtocol.LOGIN_PROTOCOL);
         return mapper;

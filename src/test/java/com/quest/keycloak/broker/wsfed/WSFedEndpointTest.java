@@ -74,6 +74,7 @@ public class WSFedEndpointTest {
     @Mock private WSFedIdentityProviderConfig config;
     @Mock private IdentityProvider.AuthenticationCallback callback;
     @Mock private WSFedIdentityProvider provider;
+    @Mock private KeyManager junkKeyManager;
 
     @Mock private ClientConnection clientConnection;
     @Mock private HttpHeaders headers;
@@ -398,10 +399,8 @@ public class WSFedEndpointTest {
         }
         RequestSecurityTokenResponseBuilder builder = SAML2RequestedTokenTest.generateRequestSecurityTokenResponseBuilder(mockHelper);
         when(config.isValidateSignature()).thenReturn(true);
-        KeyManager junkKeyManager = new DefaultKeyManager(mockHelper.getSession());
 
-        RealmModel junkRealm = mock(RealmModel.class);
-        MockHelper.generateActiveRealmKeys(junkKeyManager, new KeyManager.ActiveRsaKey("123",keyPair.getPrivate(),keyPair.getPublic(),certificate), junkRealm);
+        // Use another public key when verifying signature
         doReturn(keyPair.getPublic()).when(endpoint).getIDPKey();
 
         Response response = endpoint.handleWsFedResponse(builder.getStringValue(), builder.getContext());

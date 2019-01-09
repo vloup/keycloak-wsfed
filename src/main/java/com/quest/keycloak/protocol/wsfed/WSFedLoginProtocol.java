@@ -29,6 +29,9 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.jboss.logging.Logger;
 import org.keycloak.connections.httpclient.HttpClientProvider;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.KeyUse;
+import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.events.EventBuilder;
@@ -49,6 +52,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.xml.datatype.DatatypeConfigurationException;
 import java.io.InputStream;
 import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 
 /**
@@ -162,11 +166,12 @@ public class WSFedLoginProtocol implements LoginProtocol {
      * This method is automatically called by keycloak's AuthenticationManager upon a successful login flow
      * TODO check what information the ClientSessionCode actually carries
      * @param userSession the details of the user session (some user details + state)
-     * @param clientSession the client session
+     * @param clientSessionCtx the client session context
      * @return
      */
     @Override
-    public Response authenticated(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
+    public Response authenticated(AuthenticationSessionModel authSession, UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
+        AuthenticatedClientSessionModel clientSession = clientSessionCtx.getClientSession();
         ClientSessionCode<AuthenticatedClientSessionModel> accessCode = new ClientSessionCode<>(session, realm, clientSession);
         ClientModel client = clientSession.getClient();
         String context = clientSession.getNote(WSFedConstants.WSFED_CONTEXT);
@@ -174,7 +179,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         try {
             RequestSecurityTokenResponseBuilder builder = new RequestSecurityTokenResponseBuilder();
             KeyManager keyManager = session.keys();
-            KeyManager.ActiveRsaKey activeKey = keyManager.getActiveRsaKey(realm);
+            KeyWrapper activeKey = keyManager.getActiveKey(realm, KeyUse.SIG, Algorithm.RS256);
 
             builder.setRealm(clientSession.getClient().getClientId())
                     .setAction(WSFedConstants.WSFED_SIGNIN_ACTION)
@@ -182,7 +187,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
                     .setContext(context)
                     .setTokenExpiration(realm.getAccessTokenLifespan())
                     .setRequestIssuer(clientSession.getClient().getClientId())
-                    .setSigningKeyPair(new KeyPair(activeKey.getPublicKey(), activeKey.getPrivateKey()))
+                    .setSigningKeyPair(new KeyPair((PublicKey)activeKey.getVerifyKey(), (PrivateKey)activeKey.getSignKey()))
                     .setSigningCertificate(activeKey.getCertificate())
                     .setSigningKeyPairId(activeKey.getKid());
 

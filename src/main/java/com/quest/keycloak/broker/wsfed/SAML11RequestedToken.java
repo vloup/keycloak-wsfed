@@ -351,7 +351,7 @@ public class SAML11RequestedToken implements RequestedToken {
             String assertionXml = DocumentUtil.asString(((Element) token).getOwnerDocument());
 
             bis = new ByteArrayInputStream(assertionXml.getBytes());
-            SAMLParser parser = new SAMLParser();
+            SAMLParser parser = SAMLParser.getInstance();
             Object assertion = parser.parse(bis);
 
             assertionType = (SAML11AssertionType) assertion;

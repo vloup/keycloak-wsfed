@@ -20,6 +20,9 @@ package com.quest.keycloak.protocol.wsfed.installation;
 import com.quest.keycloak.protocol.wsfed.WSFedLoginProtocol;
 import org.keycloak.Config;
 import org.keycloak.common.util.PemUtils;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.KeyUse;
+import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.models.*;
 import org.keycloak.protocol.ClientInstallationProvider;
 import org.keycloak.services.resources.RealmsResource;
@@ -51,7 +54,7 @@ public class WSFedIDPDescriptorClientInstallation implements ClientInstallationP
      */
     public static String getIDPDescriptorForClient(KeycloakSession session, RealmModel realm, URI uri) throws Exception{
         KeyManager keyManager = session.keys();
-        KeyManager.ActiveRsaKey activeKey = keyManager.getActiveRsaKey(realm);
+        KeyWrapper activeKey = keyManager.getActiveKey(realm, KeyUse.SIG, Algorithm.RS256);
         InputStream is = WSFedIDPDescriptorClientInstallation.class.getClassLoader().getResourceAsStream("wsfed-idp-metadata-template.xml");
         String template = "Error getting descriptor";
         try(BufferedReader br = new BufferedReader(new InputStreamReader(is))){

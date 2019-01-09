@@ -209,11 +209,12 @@ public class TestHelpers {
 
         JsonWebToken token = jws.readJsonContent(JsonWebToken.class);
 
-        String[] aud = token.getAudience();
         String iss = token.getIssuer();
-
-        assertTrue("Wrong audience from token.", aud[0].equals(mockHelper.getClientId()));
         assertTrue("Token is no longer valid", token.isActive());
+
+        // check is disabled from 4.6.0.Final, because aud was removed by default (https://issues.jboss.org/browse/KEYCLOAK-8483)
+        // String[] aud = token.getAudience();
+        // assertTrue("Wrong audience from token.", aud[0].equals(mockHelper.getClientId()));
 
         String trustedIssuers = String.format("%s/realms/%s", mockHelper.getBaseUri(), mockHelper.getRealmName());
 

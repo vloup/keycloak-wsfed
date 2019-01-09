@@ -24,6 +24,7 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.mappers.UserPropertyMapper;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.services.util.DefaultClientSessionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +68,7 @@ public class OIDCUserPropertyMapper extends AbstractWsfedProtocolMapper implemen
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         UserPropertyMapper mapper = new UserPropertyMapper();
-        return mapper.transformAccessToken(token, mappingModel, session, userSession, clientSession);
+        return mapper.transformAccessToken(token, mappingModel, session, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
     }
 
     public static ProtocolMapperModel createClaimMapper(String name,
@@ -75,10 +76,8 @@ public class OIDCUserPropertyMapper extends AbstractWsfedProtocolMapper implemen
                                                         String tokenClaimName, String claimType,
                                                         boolean consentRequired, String consentText,
                                                         boolean accessToken, boolean idToken) {
-        ProtocolMapperModel mapper =  UserPropertyMapper.createClaimMapper(name, userAttribute,
-                                                                                        tokenClaimName, claimType,
-                                                                                        consentRequired, consentText,
-                                                                                        accessToken, idToken);
+        ProtocolMapperModel mapper =  UserPropertyMapper.createClaimMapper(name, userAttribute, tokenClaimName,
+                claimType, accessToken, idToken);
 
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(WSFedLoginProtocol.LOGIN_PROTOCOL);

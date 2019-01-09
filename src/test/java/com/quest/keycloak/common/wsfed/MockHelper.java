@@ -38,9 +38,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import org.keycloak.OAuth2Constants;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.enums.SslRequired;
 import org.keycloak.common.util.CertificateUtils;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.KeyStatus;
+import org.keycloak.crypto.KeyUse;
+import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.*;
 import org.keycloak.models.KeyManager.ActiveHmacKey;
@@ -77,7 +82,7 @@ public class MockHelper {
     private Map<ProtocolMapperModel, ProtocolMapper> protocolMappers = new HashMap<>();
 
     @Mock
-    private UriInfo uriInfo;
+    private KeycloakUriInfo uriInfo;
     @Mock
     private RealmModel realm;
     @Mock
@@ -159,8 +164,8 @@ public class MockHelper {
     }
 
     public static void generateActiveRealmKeys(KeyManager keyManager, KeyManager.ActiveRsaKey activeKey, RealmModel realm){
-    	if (keyManager.getActiveRsaKey(realm) != null){
-            return;
+    	if (keyManager.getActiveKey(realm, KeyUse.SIG, Algorithm.RS256) != null) {
+    	    return;
         }
         KeyPair keyPair = null;
         try {
@@ -177,15 +182,27 @@ public class MockHelper {
             throw new RuntimeException(e);
         }
 
-        SecretKey secret = new SecretKeySpec("junit".getBytes(), "HmacSHA256");
-        ActiveHmacKey activeHmacKey = new ActiveHmacKey(UUID.randomUUID().toString(), secret);
-        when(keyManager.getActiveHmacKey(eq(realm))).thenReturn(activeHmacKey);
-        when(keyManager.getActiveRsaKey(eq(realm))).thenReturn(activeKey);
+        KeyWrapper activeKeyWrapper = new KeyWrapper();
+        activeKeyWrapper.setVerifyKey(keyPair.getPublic());
+        activeKeyWrapper.setAlgorithm("RS256");
+        activeKeyWrapper.setCertificate(certificate);
+        activeKeyWrapper.setKid(UUID.randomUUID().toString());
+        activeKeyWrapper.setSignKey(keyPair.getPrivate());
+        activeKeyWrapper.setStatus(KeyStatus.ACTIVE);
+        when(keyManager.getActiveKey(eq(realm), any(), eq(Algorithm.RS256))).thenReturn(activeKeyWrapper);
+
         when(activeKey.getPublicKey()).thenReturn(keyPair.getPublic());
         when(activeKey.getPrivateKey()).thenReturn(keyPair.getPrivate());
         when(activeKey.getCertificate()).thenReturn(certificate);
         when(activeKey.getKid()).thenReturn(UUID.randomUUID().toString());
 
+        SecretKey secret = new SecretKeySpec("junit".getBytes(), "HmacSHA256");
+        KeyWrapper activeHmacKeyWrapper = new KeyWrapper();
+        activeHmacKeyWrapper.setAlgorithm("HS256");
+        activeHmacKeyWrapper.setKid(UUID.randomUUID().toString());
+        activeHmacKeyWrapper.setSecretKey(secret);
+        activeHmacKeyWrapper.setStatus(KeyStatus.ACTIVE);
+        when(keyManager.getActiveKey(eq(realm), any(), eq(Algorithm.HS256))).thenReturn(activeHmacKeyWrapper);
     }
 
     protected void initializeClientModelMock() {
@@ -256,6 +273,7 @@ public class MockHelper {
         when(rootAuthenticationSessionModel.getId()).thenReturn(UUID.randomUUID().toString());
         when(rootAuthenticationSessionModel.createAuthenticationSession(client)).thenReturn(authSession);
         when(authSession.getParentSession()).thenReturn(rootAuthenticationSessionModel);
+        when(authSession.getRealm()).thenReturn(realm);
         when(authProvider.createRootAuthenticationSession(realm)).thenReturn(rootAuthenticationSessionModel);
         when(getSession().authenticationSessions()).thenReturn(authProvider);
 
@@ -279,17 +297,16 @@ public class MockHelper {
         when(getClientSessionModel().getClient()).thenReturn(getClient());
         when(getClientSessionModel().getRedirectUri()).thenReturn(getClientId());
         when(clientSession.getRealm()).thenReturn(realm);
+        when(clientSession.getNote(OAuth2Constants.SCOPE)).thenReturn("openid");
+        when(clientSession.getUserSession()).thenReturn(getUserSessionModel());
+        when(client.getRealm()).thenReturn(realm);
+        when(client.isFullScopeAllowed()).thenReturn(true);
 
         for(Map.Entry<String, String> entry : getClientSessionNotes().entrySet()) {
             when(getClientSessionModel().getNote(entry.getKey())).thenReturn(entry.getValue());
         }
 
-        Set<String> pm = new HashSet<>();
-        for(Map.Entry<ProtocolMapperModel, ProtocolMapper> mapper : getProtocolMappers().entrySet()) {
-            pm.add(mapper.getKey().getId());
-        }
-
-        when(getClientSessionModel().getProtocolMappers()).thenReturn(pm);
+        when(getClientSessionModel().getClient().getProtocolMappers()).thenReturn(getProtocolMappers().keySet());
         RoleModel role1 = mock(RoleModel.class);
         RoleModel role2 = mock(RoleModel.class);
         RoleModel role3 = mock(RoleModel.class);
@@ -300,7 +317,7 @@ public class MockHelper {
         when(role4.getName()).thenReturn("role4");
 
         List<RoleModel> roles = Arrays.asList(role1, role2, role3, role4);
-        when(clientSession.getRoles()).thenReturn(Stream.of("role1", "role2", "role3", "role4").collect(Collectors.toSet()));
+        when(user.getRoleMappings()).thenReturn(new HashSet<RoleModel>(roles));
         when(realm.getRoleById(anyString())).thenReturn(null);
         for(RoleModel role: roles) {
             when(role.getContainer()).thenReturn(client);
@@ -316,7 +333,7 @@ public class MockHelper {
 
     protected void initializeClientSessionCodeMock() {
         when(getAccessCode().getClientSession()).thenReturn(getClientSessionModel());
-        when(getAccessCode().getRequestedProtocolMappers()).thenReturn(getProtocolMappers().keySet());
+        when(getClientSessionModel().getClient().getProtocolMappers()).thenReturn(getProtocolMappers().keySet());
     }
 
     protected void initializeUserSessionModelMock() {
@@ -423,7 +440,7 @@ public class MockHelper {
         return uriInfo;
     }
 
-    public MockHelper setUriInfo(UriInfo uriInfo) {
+    public MockHelper setUriInfo(KeycloakUriInfo uriInfo) {
         this.uriInfo = uriInfo;
         return this;
     }

@@ -23,6 +23,7 @@ import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.oidc.mappers.AddressMapper;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.services.util.DefaultClientSessionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,6 @@ public class OIDCAddressMapper extends AbstractWsfedProtocolMapper implements WS
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         AddressMapper mapper = new AddressMapper();
-        return mapper.transformAccessToken(token, mappingModel, session, userSession, clientSession);
+        return mapper.transformAccessToken(token, mappingModel, session, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
     }
 }

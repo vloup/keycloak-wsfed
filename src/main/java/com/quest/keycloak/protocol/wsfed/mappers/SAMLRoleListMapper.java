@@ -24,6 +24,7 @@ import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.protocol.saml.mappers.RoleListMapper;
 import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.services.util.DefaultClientSessionContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +82,7 @@ public class SAMLRoleListMapper extends AbstractWsfedProtocolMapper implements W
     @Override
     public void mapRoles(AttributeStatementType roleAttributeStatement, ProtocolMapperModel mappingModel, KeycloakSession session, UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         RoleListMapper samlMapper = new RoleListMapper();
-        samlMapper.mapRoles(roleAttributeStatement, mappingModel, session, userSession, clientSession);
+        samlMapper.mapRoles(roleAttributeStatement, mappingModel, session, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
     }
 
     /**

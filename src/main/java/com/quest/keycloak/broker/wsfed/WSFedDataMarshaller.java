@@ -69,7 +69,7 @@ public class WSFedDataMarshaller extends DefaultDataMarshaller {
             try {
                 byte[] bytes = serialized.getBytes();
                 InputStream is = new ByteArrayInputStream(bytes);
-                Object respType = new SAMLParser().parse(is);
+                Object respType = SAMLParser.getInstance().parse(is);
 
                 return clazz.cast(respType);
             } catch (ParsingException pe) {
@@ -80,7 +80,7 @@ public class WSFedDataMarshaller extends DefaultDataMarshaller {
             try {
                 byte[] bytes = serialized.getBytes();
                 InputStream is = new ByteArrayInputStream(bytes);
-                Object respType = new SAMLParser().parse(is);
+                Object respType = SAMLParser.getInstance().parse(is);
 
                 return clazz.cast(respType);
             } catch (ParsingException pe) {

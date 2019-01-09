@@ -37,6 +37,8 @@ import org.keycloak.broker.provider.IdentityProviderDataMarshaller;
 import org.keycloak.broker.provider.util.SimpleHttp;
 import org.keycloak.common.util.PemUtils;
 import org.keycloak.common.util.StreamUtil;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.KeyUse;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.KeyManager;
@@ -142,7 +144,7 @@ public class WSFedIdentityProvider extends AbstractIdentityProvider<WSFedIdentit
             template = template.replace("${idp.display.name}", RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
             template = template.replace("${idp.sso.sp}", getEndpoint(uriInfo, realm));
             template = template.replace("${idp.sso.passive}", getEndpoint(uriInfo, realm));
-            template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(keyManager.getActiveRsaKey(realm).getCertificate()));
+            template = template.replace("${idp.signing.certificate}", PemUtils.encodeCertificate(keyManager.getActiveKey(realm, KeyUse.SIG, Algorithm.RS256).getCertificate()));
             return Response.ok(template, MediaType.APPLICATION_XML_TYPE).build();
         } catch(Exception ex) {
             throw new IdentityBrokerException("Could not generate SP metadata", ex);

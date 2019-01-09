@@ -25,13 +25,17 @@ import java.util.Set;
 
 import com.quest.keycloak.protocol.wsfed.mappers.WSFedOIDCAccessTokenMapper;
 import org.keycloak.common.util.Base64Url;
-import org.keycloak.jose.jws.Algorithm;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.AsymmetricSignatureSignerContext;
+import org.keycloak.crypto.KeyUse;
+import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.models.*;
 import org.keycloak.protocol.ProtocolMapper;
 import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.services.managers.ClientSessionCode;
+import org.keycloak.services.util.DefaultClientSessionContext;
 
 public class WSFedOIDCAccessTokenBuilder {
     private KeycloakSession session;
@@ -99,8 +103,8 @@ public class WSFedOIDCAccessTokenBuilder {
     public String build() throws NoSuchAlgorithmException, CertificateEncodingException {
         TokenManager tokenManager = new TokenManager();
         UserModel user = session.users().getUserById(userSession.getUser().getId(), realm);
-        AccessToken accessToken = tokenManager.createClientAccessToken(session, accessCode.getRequestedRoles(), realm, client, user, userSession, clientSession);
-        accessToken = transformAccessToken(session, accessToken, realm, userSession, clientSession);
+        AccessToken accessToken = tokenManager.createClientAccessToken(session, realm, client, user, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
+        accessToken = transformAccessToken(session, accessToken, userSession, clientSession);
         return encodeToken(realm, accessToken);
     }
 
@@ -108,13 +112,13 @@ public class WSFedOIDCAccessTokenBuilder {
         JWSBuilderExtended builder = new JWSBuilderExtended().type("JWT");
 
         KeyManager keyManager = session.keys();
-        KeyManager.ActiveRsaKey activeKey = keyManager.getActiveRsaKey(realm);
+        KeyWrapper activeKey = keyManager.getActiveKey(realm, KeyUse.SIG, Algorithm.RS256);
         if(isX5tIncluded()) {
             builder.x5t(activeKey.getCertificate());
         }
 
         String encodedToken = builder.jsonContent(token)
-                                     .rsa256(activeKey.getPrivateKey());
+                                     .sign(new AsymmetricSignatureSignerContext(activeKey));
 
         return encodedToken;
     }
@@ -161,10 +165,10 @@ public class WSFedOIDCAccessTokenBuilder {
         }
 
         @Override
-        protected String encodeHeader(Algorithm alg) {
+        protected String encodeHeader(String algo) {
             StringBuilder builder = new StringBuilder("{");
             if (type != null) builder.append("\"typ\":\"").append(type).append("\",");
-            builder.append("\"alg\":\"").append(alg.toString()).append("\"");
+            builder.append("\"alg\":\"").append(algo).append("\"");
 
             if (contentType != null) builder.append(",\"cty\":\"").append(contentType).append("\"");
             if (x5t != null) builder.append(",\"x5t\":\"").append(x5t).append("\"");
@@ -177,9 +181,9 @@ public class WSFedOIDCAccessTokenBuilder {
         }
     }
 
-    public AccessToken transformAccessToken(KeycloakSession session, AccessToken token, RealmModel realm,
-                                            UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
-        Set<ProtocolMapperModel> mappings = new ClientSessionCode<>(session, realm, clientSession).getRequestedProtocolMappers();
+    public AccessToken transformAccessToken(KeycloakSession session, AccessToken token, UserSessionModel userSession,
+                                            AuthenticatedClientSessionModel clientSession) {
+        Set<ProtocolMapperModel> mappings = clientSession.getClient().getProtocolMappers();
         KeycloakSessionFactory sessionFactory = session.getKeycloakSessionFactory();
         for (ProtocolMapperModel mapping : mappings) {
 

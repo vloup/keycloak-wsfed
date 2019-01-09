@@ -111,7 +111,7 @@ public class WSFedService extends AuthorizationEndpointBase {
     @Path("descriptor")
     @Produces(MediaType.APPLICATION_XML)
     public String getDescriptor() throws Exception {
-        return WSFedIDPDescriptorClientInstallation.getIDPDescriptorForClient(session, realm, uriInfo.getBaseUri());
+        return WSFedIDPDescriptorClientInstallation.getIDPDescriptorForClient(session, realm, session.getContext().getUri().getBaseUri());
     }
 
     /**
@@ -227,7 +227,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             requestParams = httpRequest.getFormParameters();
         }
         else {
-            requestParams = uriInfo.getQueryParameters(true);
+            requestParams = session.getContext().getUri().getQueryParameters(true);
         }
 
         WSFedProtocolParameters params = WSFedProtocolParameters.fromParameters(requestParams);
@@ -283,7 +283,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         event.event(EventType.LOGIN);
 
         //Essentially ACS
-        String redirect = RedirectUtils.verifyRedirectUri(uriInfo, params.getWsfed_reply(), realm, client);
+        String redirect = RedirectUtils.verifyRedirectUri(session.getContext().getUri(), params.getWsfed_reply(), realm, client);
 
         if(redirect == null && client.getRedirectUris().size() > 0) {
             //wreply is optional so if it's not specified use the base url
@@ -303,9 +303,9 @@ public class WSFedService extends AuthorizationEndpointBase {
         authSession.setRedirectUri(redirect);
         authSession.setAction(AuthenticationSessionModel.Action.AUTHENTICATE.name());
         authSession.setClientNote(WSFedConstants.WSFED_CONTEXT, params.getWsfed_context());
-        authSession.setClientNote(OIDCLoginProtocol.ISSUER, RealmsResource.realmBaseUrl(uriInfo).build(realm.getName()).toString());
+        authSession.setClientNote(OIDCLoginProtocol.ISSUER, RealmsResource.realmBaseUrl(session.getContext().getUri()).build(realm.getName()).toString());
 
-        LoginProtocol wsfedProtocol = new WSFedLoginProtocol().setEventBuilder(event).setHttpHeaders(headers).setRealm(realm).setSession(session).setUriInfo(uriInfo);
+        LoginProtocol wsfedProtocol = new WSFedLoginProtocol().setEventBuilder(event).setHttpHeaders(headers).setRealm(realm).setSession(session).setUriInfo(session.getContext().getUri());
         return handleBrowserAuthenticationRequest(authSession, wsfedProtocol, false, redirectToAuthentication);
     }
 
@@ -319,10 +319,10 @@ public class WSFedService extends AuthorizationEndpointBase {
 
         String logoutUrl;
         if(client != null) {
-            logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, params.getWsfed_reply(), realm, client);
+            logoutUrl = RedirectUtils.verifyRedirectUri(session.getContext().getUri(), params.getWsfed_reply(), realm, client);
         }
         else {
-            logoutUrl = RedirectUtils.verifyRealmRedirectUri(uriInfo, params.getWsfed_reply(), realm);
+            logoutUrl = RedirectUtils.verifyRealmRedirectUri(session.getContext().getUri(), params.getWsfed_reply(), realm);
         }
 
         AuthenticationManager.AuthResult authResult = authenticateIdentityCookie();
@@ -342,7 +342,7 @@ public class WSFedService extends AuthorizationEndpointBase {
             event.session(userSession);
 
             logger.debug("browser Logout");
-            Response response = authManager.browserLogout(session, realm, userSession, uriInfo, clientConnection, headers);
+            Response response = authManager.browserLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, client.getName());
             event.success();
             return response;
         }
@@ -379,7 +379,7 @@ public class WSFedService extends AuthorizationEndpointBase {
         event.session(userSession);
 
         logger.debug("logout response");
-        Response response = authManager.browserLogout(session, realm, userSession, uriInfo, clientConnection, headers);
+        Response response = authManager.browserLogout(session, realm, userSession, session.getContext().getUri(), clientConnection, headers, client.getName());
         event.success();
         return response;
     }

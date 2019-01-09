@@ -170,7 +170,6 @@ public class SAMLScriptBasedMapper extends AbstractWsfedProtocolMapper implement
         mapper.setName(name);
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(SamlProtocol.LOGIN_PROTOCOL);
-        mapper.setConsentRequired(false);
         Map<String, String> config = new HashMap<>();
         config.put(AttributeStatementHelper.SAML_ATTRIBUTE_NAME, samlAttributeName);
         if (friendlyName != null) {

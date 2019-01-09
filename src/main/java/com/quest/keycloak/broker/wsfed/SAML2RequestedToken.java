@@ -17,6 +17,8 @@
 package com.quest.keycloak.broker.wsfed;
 
 import org.jboss.logging.Logger;
+import org.keycloak.crypto.Algorithm;
+import org.keycloak.crypto.KeyUse;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AttributeStatementType;
 import org.keycloak.dom.saml.v2.assertion.AttributeType;
@@ -212,14 +214,14 @@ public class SAML2RequestedToken implements RequestedToken {
         AssertionType assertionType =  null;
         ByteArrayInputStream bis = null;
         try {
-            SAMLParser parser = new SAMLParser();
+            SAMLParser parser = SAMLParser.getInstance();
             String assertionXml = DocumentUtil.asString(((Element) token).getOwnerDocument());
 
             bis = new ByteArrayInputStream(assertionXml.getBytes());
             Object assertion = parser.parse(bis);
 
             if(assertion instanceof EncryptedAssertionType) {
-                PrivateKey privateKey = session.keys().getActiveRsaKey(realm).getPrivateKey();
+                PrivateKey privateKey = (PrivateKey)session.keys().getActiveKey(realm, KeyUse.SIG, Algorithm.RS256).getSignKey();
                 assertionType = decryptAssertion((EncryptedAssertionType) assertion, privateKey);
             }
             else {
@@ -248,7 +250,7 @@ public class SAML2RequestedToken implements RequestedToken {
         newDoc.appendChild(importedNode);
 
         Element decryptedDocumentElement = XMLEncryptionUtil.decryptElementInDocument(newDoc, privateKey);
-        SAMLParser parser = new SAMLParser();
+        SAMLParser parser = SAMLParser.getInstance();
 
         JAXPValidationUtil.checkSchemaValidation(decryptedDocumentElement);
         AssertionType assertion = (AssertionType) parser.parse(StaxParserUtil.getXMLEventReader(DocumentUtil.getNodeAsStream(decryptedDocumentElement)));

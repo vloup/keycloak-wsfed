@@ -66,7 +66,7 @@ public class SAMLUserAttributeStatementMapper extends AbstractWsfedProtocolMappe
     public static ProtocolMapperModel createAttributeMapper(String name, String userAttribute,
                                                             String samlAttributeName, String nameFormat, String friendlyName,
                                                             boolean consentRequired, String consentText) {
-        ProtocolMapperModel mapper = UserAttributeStatementMapper.createAttributeMapper(name, userAttribute, samlAttributeName, nameFormat, friendlyName, consentRequired, consentText);
+        ProtocolMapperModel mapper = UserAttributeStatementMapper.createAttributeMapper(name, userAttribute, samlAttributeName, nameFormat, friendlyName);
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(WSFedLoginProtocol.LOGIN_PROTOCOL);
         return mapper;
