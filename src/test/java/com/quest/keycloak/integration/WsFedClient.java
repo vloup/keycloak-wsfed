@@ -1,33 +1,18 @@
 package com.quest.keycloak.integration;
 
-import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.jboss.logging.Logger;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import org.keycloak.dom.saml.v2.protocol.AuthnRequestType;
-import org.keycloak.saml.SAMLRequestParser;
-import org.keycloak.saml.common.exceptions.ConfigurationException;
-import org.keycloak.saml.processing.api.saml.v2.request.SAML2Request;
-import org.keycloak.saml.processing.core.saml.v2.common.SAMLDocumentHolder;
 
 import java.net.URI;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-
+/** Inspired from the parent project https://github.com/keycloak/keycloak */
 public class WsFedClient {
 
     @FunctionalInterface
@@ -67,64 +52,6 @@ public class WsFedClient {
     private final HttpClientContext context = HttpClientContext.create();
 
     private final RedirectStrategyWithSwitchableFollowRedirect strategy = new RedirectStrategyWithSwitchableFollowRedirect();
-
-    /**
-     * Extracts and parses value of SAMLResponse input field of a form present in the given page.
-     *
-     * @param responsePage HTML code of the page
-     * @return
-     */
-    public static SAMLDocumentHolder extractSamlResponseFromForm(String responsePage) {
-        org.jsoup.nodes.Document theResponsePage = Jsoup.parse(responsePage);
-        Elements samlResponses = theResponsePage.select("input[name=SAMLResponse]");
-        Elements samlRequests = theResponsePage.select("input[name=SAMLRequest]");
-        int size = samlResponses.size() + samlRequests.size();
-        assertThat("Checking uniqueness of SAMLResponse/SAMLRequest input field in the page", size, is(1));
-
-        Element respElement = samlResponses.isEmpty() ? samlRequests.first() : samlResponses.first();
-
-        return SAMLRequestParser.parseResponsePostBinding(respElement.val());
-    }
-
-    /**
-     * Extracts and parses value of SAMLResponse query parameter from the given URI.
-     *
-     * @param responseUri
-     * @return
-     */
-    public static SAMLDocumentHolder extractSamlResponseFromRedirect(String responseUri) {
-        List<NameValuePair> params = URLEncodedUtils.parse(URI.create(responseUri).toString(), Charset.forName("UTF-8"));
-
-        String samlDoc = null;
-        for (NameValuePair param : params) {
-            if ("SAMLResponse".equals(param.getName()) || "SAMLRequest".equals(param.getName())) {
-                assertThat("Only one SAMLRequest/SAMLResponse check", samlDoc, nullValue());
-                samlDoc = param.getValue();
-            }
-        }
-
-        return SAMLRequestParser.parseResponseRedirectBinding(samlDoc);
-    }
-
-    /**
-     * Creates a SAML login request document with the given parameters. See SAML &lt;AuthnRequest&gt; description for more details.
-     *
-     * @param issuer
-     * @param assertionConsumerURL
-     * @param destination
-     * @return
-     */
-    public static AuthnRequestType createLoginRequestDocument(String issuer, String assertionConsumerURL, URI destination) {
-        try {
-            SAML2Request samlReq = new SAML2Request();
-            AuthnRequestType loginReq = samlReq.createAuthnRequestType(UUID.randomUUID().toString(), assertionConsumerURL,
-                    destination == null ? null : destination.toString(), issuer);
-
-            return loginReq;
-        } catch (ConfigurationException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
 
     public void execute(Step... steps) {
         executeAndTransform(resp -> null, Arrays.asList(steps));

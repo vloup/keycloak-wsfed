@@ -15,7 +15,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/** Inspired from the parent project https://github.com/keycloak/keycloak */
 public class CreateWsFedAuthResponseStepBuilder extends AbtractsStepBuilder {
 
     private final URI authServerWsFedUrl;
@@ -48,10 +48,6 @@ public class CreateWsFedAuthResponseStepBuilder extends AbtractsStepBuilder {
         UrlEncodedFormEntity formEntity = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(formEntity);
 
-//        BasicClientCookie cookie = new BasicClientCookie("KC_RESTART", kcRestartCookie);
-//        cookie.setDomain("localhost");
-//        CookieStore store = new BasicCookieStore();
-//        store.addCookie(cookie);
         httpClientContext.setCookieStore(originalHttpRequestContext.getCookieStore());
 
         return post;

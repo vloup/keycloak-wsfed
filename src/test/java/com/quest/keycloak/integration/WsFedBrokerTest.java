@@ -37,11 +37,14 @@ import static org.junit.Assert.fail;
 
 public class WsFedBrokerTest extends AbstractWsFedAuthTest {
 
+    // data for triggering the authentication process
     private static final String WSFED_LOGIN_URL = "http://localhost:8180/auth/realms/test-wsfed/protocol/wsfed";
     private static final String WSFED_BROKER_LOGIN_URL = "http://localhost:8180/auth/realms/test-wsfed/broker/wsfed/endpoint";
     private static final String WSFED_BROKER_CLIENT_ID = "wsfed";
-    private static final String DUMMY_IDP_URL = "http://localhost:4040/auth/realms/master/protocol/wsfed";
     private static final String CLIENT_ID = "wsfed-saml2";
+
+    // external IDP
+    private static final String DUMMY_IDP_URL = "http://localhost:4040/auth/realms/master/protocol/wsfed";
     private static final String DUMMY_IDP_CLIENT_ID = "test-broker";
 
     private static final String DUMMY_IDP_ISSUER = "http://localhost:4040/auth/realms/master";
@@ -74,8 +77,8 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         String extContextId = checkAutoPostFormContentForRequest(request);
 
         // generate the token
-        X509Certificate certificate = parseCertificate(IDP_CERTIFICATE);
-        PrivateKey privateKey = parsePrivateKey(IDP_PRIVATE_KEY);
+        X509Certificate certificate = TestCryptoUtil.parseCertificate(IDP_CERTIFICATE);
+        PrivateKey privateKey = TestCryptoUtil.parsePrivateKey(IDP_PRIVATE_KEY);
         String wsFedToken = createWsFedResponseTokenWithSaml2(extContextId, certificate, privateKey);
 
         // execute the response (post WS-Fed content), use former http client context to re-use the cookies
@@ -111,8 +114,8 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         String extContextId = checkAutoPostFormContentForRequest(request);
 
         // generate the token
-        X509Certificate certificate = parseCertificate(IDP_CERTIFICATE);
-        PrivateKey privateKey = parsePrivateKey(IDP_PRIVATE_KEY);
+        X509Certificate certificate = TestCryptoUtil.parseCertificate(IDP_CERTIFICATE);
+        PrivateKey privateKey = TestCryptoUtil.parsePrivateKey(IDP_PRIVATE_KEY);
         String wsFedToken = createWsFedResponseTokenWithSaml11(extContextId, certificate, privateKey);
 
         // execute the response (post WS-Fed content), use former http client context to re-use the cookies
@@ -148,8 +151,8 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         String extContextId = checkAutoPostFormContentForRequest(request);
 
         // generate the token
-        X509Certificate certificate = parseCertificate(IDP_WRONG_CERTIFICATE);
-        PrivateKey privateKey = parsePrivateKey(IDP_WRONG_PRIVATE_KEY);
+        X509Certificate certificate = TestCryptoUtil.parseCertificate(IDP_WRONG_CERTIFICATE);
+        PrivateKey privateKey = TestCryptoUtil.parsePrivateKey(IDP_WRONG_PRIVATE_KEY);
         String wsFedToken = createWsFedResponseTokenWithSaml2(extContextId, certificate, privateKey);
 
         // execute the response (post WS-Fed content), use former http client context to re-use the cookies
@@ -185,8 +188,8 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         String extContextId = checkAutoPostFormContentForRequest(request);
 
         // generate the token
-        X509Certificate certificate = parseCertificate(IDP_WRONG_CERTIFICATE);
-        PrivateKey privateKey = parsePrivateKey(IDP_WRONG_PRIVATE_KEY);
+        X509Certificate certificate = TestCryptoUtil.parseCertificate(IDP_WRONG_CERTIFICATE);
+        PrivateKey privateKey = TestCryptoUtil.parsePrivateKey(IDP_WRONG_PRIVATE_KEY);
         String wsFedToken = createWsFedResponseTokenWithSaml11(extContextId, certificate, privateKey);
 
         // execute the response (post WS-Fed content), use former http client context to re-use the cookies
@@ -253,6 +256,7 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         return wctx;
     }
 
+    /** create a WS-Fed token with a SAML 2.0 assertion */
     private String createWsFedResponseTokenWithSaml2(String contextId, X509Certificate certificate, PrivateKey privateKey) throws Exception {
         RequestSecurityTokenResponseBuilder builder = new RequestSecurityTokenResponseBuilder();
 
@@ -277,6 +281,7 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         return builder.setSamlToken(assertion).getStringValue();
     }
 
+    /** create a WS-Fed token with a SAML 1.1 assertion */
     private String createWsFedResponseTokenWithSaml11(String contextId, X509Certificate certificate, PrivateKey privateKey) throws Exception {
         RequestSecurityTokenResponseBuilder builder = new RequestSecurityTokenResponseBuilder();
 
@@ -298,41 +303,6 @@ public class WsFedBrokerTest extends AbstractWsFedAuthTest {
         SAML11AssertionType assertion = saml11Builder.buildModel();
 
         return builder.setSaml11Token(assertion).getStringValue();
-    }
-
-    // parse a PKCS#1 formatted private key
-    public static PrivateKey parsePrivateKey(String base64) throws IOException {
-        RSAPrivateKey rsa   = RSAPrivateKey.getInstance(java.util.Base64.getDecoder().decode(base64));
-        RSAPrivateCrtKeyParameters privateKeyParameter = new RSAPrivateCrtKeyParameters(
-                rsa.getModulus(),
-                rsa.getPublicExponent(),
-                rsa.getPrivateExponent(),
-                rsa.getPrime1(),
-                rsa.getPrime2(),
-                rsa.getExponent1(),
-                rsa.getExponent2(),
-                rsa.getCoefficient()
-        );
-        return new JcaPEMKeyConverter()
-                .getPrivateKey(
-                        PrivateKeyInfoFactory.createPrivateKeyInfo(
-                                privateKeyParameter
-                        )
-                );
-    }
-
-    private static X509Certificate parseCertificate(String certB64){
-        try {
-            byte encodedCert[] = Base64.decode(certB64);
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(encodedCert);
-
-            CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-            return (X509Certificate) certFactory.generateCertificate(inputStream);
-        }
-        catch (IOException | CertificateException ex) {
-            fail("Error while parsing certificate");
-        }
-        return null;
     }
 
 }

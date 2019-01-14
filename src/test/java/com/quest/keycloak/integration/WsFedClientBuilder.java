@@ -18,9 +18,7 @@ import java.util.function.Consumer;
 
 import static org.hamcrest.Matchers.notNullValue;
 
-/**
- * @author hmlnarik
- */
+/** Inspired from the parent project https://github.com/keycloak/keycloak */
 public class WsFedClientBuilder {
 
     private final List<WsFedClient.Step> steps = new LinkedList<>();

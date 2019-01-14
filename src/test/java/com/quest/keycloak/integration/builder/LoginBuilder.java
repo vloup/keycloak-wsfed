@@ -31,6 +31,7 @@ import static org.junit.Assert.assertThat;
 import static org.keycloak.testsuite.admin.Users.getPasswordOf;
 import static org.keycloak.testsuite.util.Matchers.statusCodeIsHC;
 
+/** Taken from the parent project https://github.com/keycloak/keycloak */
 public class LoginBuilder implements WsFedClient.Step {
 
     private final WsFedClientBuilder clientBuilder;
